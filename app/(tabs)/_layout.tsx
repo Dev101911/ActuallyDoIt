@@ -19,8 +19,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Reminders',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="checklist" color={color} />,
+          title: 'Today',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="sun.max" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="lists"
+        options={{
+          title: 'Lists',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="list.bullet" color={color} />,
         }}
       />
     </Tabs>

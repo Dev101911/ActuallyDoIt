@@ -34,11 +34,17 @@ export function ReminderRow({
     meta.push(new Date(reminder.deadline).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
   }
   if (reminder.expectedMinutes != null) meta.push(`${reminder.expectedMinutes} min`);
-  if (reminder.alertFrequencyMinutes != null) meta.push(`every ${reminder.alertFrequencyMinutes} min`);
+  if (reminder.alertFrequencyMinutes != null) meta.push(`remind every ${reminder.alertFrequencyMinutes} min`);
+  if (reminder.recurrenceIntervalDays != null) meta.push(`repeats every ${reminder.recurrenceIntervalDays}d`);
 
   return (
     <ThemedView style={[styles.row, { backgroundColor: theme.backgroundElement }]}>
-      <Pressable onPress={onToggle} hitSlop={8}>
+      <Pressable
+        onPress={onToggle}
+        hitSlop={8}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: reminder.completed }}
+        accessibilityLabel={`Mark ${reminder.title} as ${reminder.completed ? 'incomplete' : 'complete'}`}>
         <ThemedView
           style={[
             styles.checkbox,

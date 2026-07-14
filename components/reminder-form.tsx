@@ -24,53 +24,61 @@ const PRIORITIES: { label: string; value: Priority }[] = [
   { label: 'High', value: 'high' },
 ];
 
-function emptyForm(): ReminderInput {
+function emptyForm(listId: string): ReminderInput {
   return {
+    listId,
     title: '',
     details: '',
     expectedMinutes: null,
     deadline: null,
     priority: null,
     alertFrequencyMinutes: null,
+    recurrenceIntervalDays: null,
   };
 }
 
 function fromReminder(reminder: Reminder): ReminderInput {
   return {
+    listId: reminder.listId,
     title: reminder.title,
     details: reminder.details ?? '',
     expectedMinutes: reminder.expectedMinutes,
     deadline: reminder.deadline,
     priority: reminder.priority,
     alertFrequencyMinutes: reminder.alertFrequencyMinutes,
+    recurrenceIntervalDays: reminder.recurrenceIntervalDays,
   };
 }
 
 export function ReminderForm({
   visible,
   reminder,
+  listId,
+  allowRecurrence,
   onSave,
   onCancel,
 }: {
   visible: boolean;
   reminder: Reminder | null;
+  listId: string;
+  allowRecurrence: boolean;
   onSave: (input: ReminderInput) => void;
   onCancel: () => void;
 }) {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
-  const [form, setForm] = useState<ReminderInput>(emptyForm());
+  const [form, setForm] = useState<ReminderInput>(emptyForm(listId));
   // Android has no inline "compact" picker, so date/time are picked via separate native dialogs.
   const [pendingDeadlineDate, setPendingDeadlineDate] = useState<Date | null>(null);
   const [androidPickerMode, setAndroidPickerMode] = useState<'date' | 'time' | null>(null);
 
   useEffect(() => {
     if (visible) {
-      setForm(reminder ? fromReminder(reminder) : emptyForm());
+      setForm(reminder ? fromReminder(reminder) : emptyForm(listId));
       setAndroidPickerMode(null);
       setPendingDeadlineDate(null);
     }
-  }, [visible, reminder]);
+  }, [visible, reminder, listId]);
 
   const canSave = form.title.trim().length > 0;
 
@@ -291,6 +299,27 @@ export function ReminderForm({
                   style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
                 />
               </ThemedView>
+
+              {allowRecurrence && (
+                <ThemedView style={styles.field}>
+                  <ThemedText lightColor={theme.textSecondary} darkColor={theme.textSecondary} style={styles.label}>
+                    Repeat every (days)
+                  </ThemedText>
+                  <TextInput
+                    value={form.recurrenceIntervalDays != null ? String(form.recurrenceIntervalDays) : ''}
+                    onChangeText={(text) =>
+                      setForm((f) => ({
+                        ...f,
+                        recurrenceIntervalDays: text.trim() ? Number(text.replace(/[^0-9]/g, '')) : null,
+                      }))
+                    }
+                    placeholder="One-off (leave blank)"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="number-pad"
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+                  />
+                </ThemedView>
+              )}
             </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
