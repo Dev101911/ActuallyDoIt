@@ -44,8 +44,27 @@ struct ADHDoItApp: App {
                     NudgeScheduler.shared.reconcile(in: sharedModelContainer.mainContext)
                 }
                 .tint(accentTheme.color)
-                .preferredColorScheme(appearanceTheme.colorScheme)
+                .background(AppearanceStyleSetter(style: appearanceTheme.uiStyle))
         }
         .modelContainer(sharedModelContainer)
+    }
+}
+
+/// Applies the chosen light/dark override to the host window. Sits behind the app's content so
+/// it can reach `window`; setting `overrideUserInterfaceStyle` cascades to the whole window
+/// (including presented sheets), and `.unspecified` reliably reverts to the system setting.
+private struct AppearanceStyleSetter: UIViewRepresentable {
+    let style: UIUserInterfaceStyle
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isHidden = true
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        DispatchQueue.main.async {
+            uiView.window?.overrideUserInterfaceStyle = style
+        }
     }
 }

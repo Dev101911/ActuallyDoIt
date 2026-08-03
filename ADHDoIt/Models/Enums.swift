@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import UIKit
 
 /// The lifecycle state of a task.
 ///
@@ -142,10 +143,11 @@ enum AppearanceTheme: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// The scheme to force, or `nil` to follow the device setting.
-    var colorScheme: ColorScheme? {
+    /// The window override style. `.unspecified` reliably reverts to the device setting,
+    /// unlike `preferredColorScheme(nil)` which can fail to clear a previously forced scheme.
+    var uiStyle: UIUserInterfaceStyle {
         switch self {
-        case .system: return nil
+        case .system: return .unspecified
         case .light: return .light
         case .dark: return .dark
         }
