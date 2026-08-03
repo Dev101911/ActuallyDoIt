@@ -1,0 +1,153 @@
+//
+//  Enums.swift
+//  ADHDoIt
+//
+//  Supporting value types for the task domain.
+//
+
+import Foundation
+import SwiftUI
+
+/// The lifecycle state of a task.
+///
+/// A task is never marked `completed` directly from a dismissed reminder; it passes through
+/// `awaitingVerification` first (see the completion-verification flow in the plan).
+enum TaskStatus: String, Codable, CaseIterable {
+    case pending
+    case awaitingVerification
+    case completed
+    case skipped
+}
+
+/// How a task's completion is confirmed before it counts as done.
+enum VerificationMethod: String, Codable, CaseIterable {
+    case tapToConfirm       // simple "Yes, I really did it" tap
+    case delayedRecheck     // re-ask a few minutes later
+
+    var label: String {
+        switch self {
+        case .tapToConfirm: return "Tap to confirm"
+        case .delayedRecheck: return "Re-check later"
+        }
+    }
+}
+
+/// How aggressively the nudge engine re-reminds the user about a task.
+enum NudgeIntensity: String, Codable, CaseIterable {
+    case gentle
+    case persistent
+    case relentless
+
+    var label: String {
+        switch self {
+        case .gentle: return "Gentle"
+        case .persistent: return "Persistent"
+        case .relentless: return "Relentless"
+        }
+    }
+
+    /// One-line explanation of the reminder cadence, shown under the picker.
+    var detail: String {
+        switch self {
+        case .gentle: return "One reminder in the morning."
+        case .persistent: return "Three reminders spread through the day."
+        case .relentless: return "A reminder every hour, 9am–9pm, until it's done."
+        }
+    }
+
+    /// Hours of the day (24-hour clock) at which a nudge fires for a task at this intensity.
+    /// Reminders are kept inside a 9am–9pm window so the user is never woken at night.
+    var dailyFireHours: [Int] {
+        switch self {
+        case .gentle: return [9]
+        case .persistent: return [9, 15, 21]
+        case .relentless: return Array(9...21)
+        }
+    }
+
+    /// Higher rank = more urgent. Used when ranking tasks for the "Up next" list.
+    var rank: Int {
+        switch self {
+        case .gentle: return 0
+        case .persistent: return 1
+        case .relentless: return 2
+        }
+    }
+}
+
+/// A user-selectable accent colour for the app. Backed by `String` so it stores directly in
+/// `@AppStorage`, and limited to a curated set of presets to match the app's minimal feel.
+/// This is the single source of truth behind both the app-wide `.tint` and the "Doing now"
+/// row highlight, so those two always stay in sync.
+enum AccentTheme: String, Codable, CaseIterable, Identifiable {
+    case blue
+    case teal
+    case indigo
+    case pink
+    case orange
+    case green
+
+    /// The default used when no preference has been saved yet.
+    static let `default`: AccentTheme = .blue
+
+    /// The `@AppStorage` key shared by every view that reads the theme.
+    static let storageKey = "accentTheme"
+
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .blue: return .blue
+        case .teal: return .teal
+        case .indigo: return .indigo
+        case .pink: return .pink
+        case .orange: return .orange
+        case .green: return .green
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .blue: return "Blue"
+        case .teal: return "Teal"
+        case .indigo: return "Indigo"
+        case .pink: return "Pink"
+        case .orange: return "Orange"
+        case .green: return "Green"
+        }
+    }
+}
+
+/// The user's preferred light/dark appearance. Backed by `String` for `@AppStorage`.
+/// `.system` follows the device setting; the other cases force a scheme via
+/// `.preferredColorScheme`.
+enum AppearanceTheme: String, Codable, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    /// The default used when no preference has been saved yet.
+    static let `default`: AppearanceTheme = .system
+
+    /// The `@AppStorage` key shared by every view that reads the appearance.
+    static let storageKey = "appearanceTheme"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+
+    /// The scheme to force, or `nil` to follow the device setting.
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
