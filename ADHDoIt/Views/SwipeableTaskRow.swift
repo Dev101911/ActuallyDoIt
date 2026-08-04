@@ -84,11 +84,11 @@ struct TaskListRow: View {
     var onSetAsFocus: () -> Void = {}
 
     @State private var editingTask: TaskItem?
-    @State private var confirmingFocus = false
+    @State private var showingDetail = false
     @State private var confirmingDelete = false
 
     var body: some View {
-        SwipeableTaskRow(task: task, onTap: { confirmingFocus = true }) {
+        SwipeableTaskRow(task: task, onTap: { showingDetail = true }) {
             HStack {
                 TaskRowView(task: task)
                 Spacer(minLength: 0)
@@ -100,18 +100,8 @@ struct TaskListRow: View {
         .sheet(item: $editingTask) { task in
             AddEditTaskView(task: task)
         }
-        .confirmationDialog(
-            "Set as your focus task?",
-            isPresented: $confirmingFocus,
-            titleVisibility: .visible
-        ) {
-            Button("Set as focus") {
-                TaskActions.promoteToCurrent(task, in: modelContext)
-                onSetAsFocus()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(task.title)
+        .sheet(isPresented: $showingDetail) {
+            TaskDetailView(task: task)
         }
         .confirmationDialog(
             "Delete this task?",
@@ -129,6 +119,14 @@ struct TaskListRow: View {
 
     private var menu: some View {
         Menu {
+            if !task.isCurrent {
+                Button {
+                    TaskActions.promoteToCurrent(task, in: modelContext)
+                    onSetAsFocus()
+                } label: {
+                    Label("Set as doing now", systemImage: "target")
+                }
+            }
             Button {
                 TaskActions.complete(task, in: modelContext)
             } label: {

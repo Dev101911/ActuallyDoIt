@@ -10,6 +10,7 @@
 		DB7CC3123020BA43005C873C /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DB7CC3113020BA43005C873C /* WidgetKit.framework */; };
 		DB7CC3143020BA43005C873C /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DB7CC3133020BA43005C873C /* SwiftUI.framework */; };
 		DB7CC3233020BA44005C873C /* FocusActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DB7CC30F3020BA43005C873C /* FocusActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DB923A423021CB6400416506 /* Tips.storekit in Resources */ = {isa = PBXBuildFile; fileRef = DB923A413021CB6400416506 /* Tips.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 		DB7CC30F3020BA43005C873C /* FocusActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DB7CC3113020BA43005C873C /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		DB7CC3133020BA43005C873C /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		DB923A413021CB6400416506 /* Tips.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tips.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -156,6 +158,7 @@
 				DB7CC3153020BA43005C873C /* FocusActivity */,
 				DB7CC3103020BA43005C873C /* Frameworks */,
 				DB7CC2B930207733005C873C /* Products */,
+				DB923A413021CB6400416506 /* Tips.storekit */,
 			);
 			sourceTree = "<group>";
 		};
@@ -327,6 +330,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DB923A423021CB6400416506 /* Tips.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

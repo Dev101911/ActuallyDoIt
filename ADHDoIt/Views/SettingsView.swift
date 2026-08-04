@@ -43,6 +43,8 @@ struct SettingsView: View {
                 } footer: {
                     Text("Accent colour sets the app's tint and the highlight on your focused task.")
                 }
+
+                TipJarView()
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)

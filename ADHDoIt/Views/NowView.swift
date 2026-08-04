@@ -72,6 +72,9 @@ struct NowView: View {
                             } label: {
                                 Label("Pick for me", systemImage: "dice")
                                     .frame(maxWidth: .infinity)
+                                    // Grey out the label (including the icon) while disabled so
+                                    // it's clear the button isn't tappable when a task is in focus.
+                                    .foregroundStyle(currentTask != nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.large)
