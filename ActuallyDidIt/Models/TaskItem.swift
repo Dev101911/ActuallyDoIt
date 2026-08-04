@@ -30,8 +30,6 @@ final class TaskItem {
     // Nudge engine state
     var nudgePolicy: NudgePolicy = NudgePolicy.default
     var lastNudgedAt: Date?
-    /// While set to a future date the task is suppressed (snoozed or in a post-skip cooldown).
-    var snoozedUntil: Date?
 
     // Completion state
     var statusRaw: String = TaskStatus.pending.rawValue
@@ -86,9 +84,7 @@ extension TaskItem {
 
     /// True when the task is available to be worked on / suggested right now.
     var isActionable: Bool {
-        guard status == .pending else { return false }
-        if let snoozedUntil, snoozedUntil > Date() { return false }
-        return true
+        status == .pending
     }
 
     /// A short reason string explaining why a task is being surfaced.

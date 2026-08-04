@@ -17,7 +17,6 @@ enum TaskStatus: String, Codable, CaseIterable {
     case pending
     case awaitingVerification
     case completed
-    case skipped
 }
 
 /// How a task's completion is confirmed before it counts as done.

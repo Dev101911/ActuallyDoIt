@@ -5,7 +5,7 @@
 //  Turns each task's nudge intensity into local notifications. Mirrors the
 //  `FocusActivityController` pattern: a single reconcile entry point rebuilds the full set of
 //  scheduled reminders from the current store state, so nudges automatically stop the moment a
-//  task is completed, skipped, snoozed, or deleted.
+//  task is completed or deleted.
 //
 //  Only tasks that are pending and due today (or overdue) are nudged, and only the single
 //  highest-priority one at a time — this keeps us well under iOS's 64 pending-notification limit.
@@ -62,7 +62,7 @@ final class NudgeScheduler {
 
     // MARK: - Eligibility
 
-    /// Pending, non-snoozed tasks that are due today or overdue and not currently being worked on.
+    /// Pending tasks that are due today or overdue and not currently being worked on.
     private func eligibleTasks(in context: ModelContext) -> [TaskItem] {
         let pendingRaw = TaskStatus.pending.rawValue
         let descriptor = FetchDescriptor<TaskItem>(
@@ -74,7 +74,6 @@ final class NudgeScheduler {
 
         return all.filter { task in
             guard !task.isCurrent else { return false }               // actively being done
-            if let snoozed = task.snoozedUntil, snoozed > now { return false }
             guard let due = task.dueDate else { return false }         // only dated tasks nudge
             return calendar.isDateInToday(due) || due < now            // due today or overdue
         }

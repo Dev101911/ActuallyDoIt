@@ -157,9 +157,9 @@ private struct DoingNowSection: View {
             .padding(.top, 4)
 
             Button {
-                TaskActions.snooze(task, in: modelContext)
+                TaskActions.unfocus(task, in: modelContext)
             } label: {
-                Text("Snooze")
+                Text("Can't do this now")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)

@@ -11,19 +11,10 @@ import SwiftData
 
 enum TaskActions {
 
-    /// Default cooldown applied after a task is skipped, so the same thing isn't re-suggested
-    /// immediately.
-    static let skipCooldown: TimeInterval = 60 * 30 // 30 minutes
-
-    /// Default snooze duration.
-    static let defaultSnooze: TimeInterval = 60 * 15 // 15 minutes
-
     /// Makes `task` the single current task, clearing focus from any other task first.
     static func promoteToCurrent(_ task: TaskItem, in context: ModelContext) {
         clearAllFocus(in: context, except: task)
         task.focusStartedAt = Date()
-        // Bringing a task into focus lifts any lingering snooze/cooldown.
-        task.snoozedUntil = nil
         FocusActivityController.shared.reconcile(in: context)
         NudgeScheduler.shared.reconcile(in: context)
     }
@@ -51,7 +42,6 @@ enum TaskActions {
             let base = task.dueDate ?? Date()
             task.dueDate = rule.nextDate(after: base)
             task.status = .pending
-            task.snoozedUntil = nil
             task.completedAt = Date()
         } else {
             task.status = .completed
@@ -69,22 +59,9 @@ enum TaskActions {
         NudgeScheduler.shared.reconcile(in: context)
     }
 
-    /// Snoozes the current task for the given interval and drops it out of focus.
-    static func snooze(_ task: TaskItem,
-                       for interval: TimeInterval = defaultSnooze,
-                       in context: ModelContext) {
-        task.snoozedUntil = Date().addingTimeInterval(interval)
-        task.focusStartedAt = nil
-        FocusActivityController.shared.reconcile(in: context)
-        NudgeScheduler.shared.reconcile(in: context)
-    }
-
-    /// Skips the current task: drops focus and applies a short cooldown so it isn't immediately
-    /// re-suggested.
-    static func skip(_ task: TaskItem,
-                     cooldown: TimeInterval = skipCooldown,
-                     in context: ModelContext) {
-        task.snoozedUntil = Date().addingTimeInterval(cooldown)
+    /// Drops the task out of focus without completing it — used when the user can't do it right
+    /// now. The task stays pending and eligible to be surfaced again.
+    static func unfocus(_ task: TaskItem, in context: ModelContext) {
         task.focusStartedAt = nil
         FocusActivityController.shared.reconcile(in: context)
         NudgeScheduler.shared.reconcile(in: context)

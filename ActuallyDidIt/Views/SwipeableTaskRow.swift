@@ -20,8 +20,6 @@ struct SwipeableTaskRow<Content: View, Accessory: View>: View {
     @ViewBuilder var content: () -> Content
     @ViewBuilder var accessory: () -> Accessory
 
-    @State private var confirmingDelete = false
-
     var body: some View {
         HStack(spacing: 8) {
             Button(action: onTap) {
@@ -42,22 +40,11 @@ struct SwipeableTaskRow<Content: View, Accessory: View>: View {
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                confirmingDelete = true
+                TaskActions.delete(task, in: modelContext)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-        }
-        .confirmationDialog(
-            "Delete this task?",
-            isPresented: $confirmingDelete,
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                TaskActions.delete(task, in: modelContext)
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(task.title)
+            .tint(.red)
         }
     }
 }
@@ -142,6 +129,7 @@ struct TaskListRow: View {
             } label: {
                 Label("Delete", systemImage: "trash")
             }
+            .tint(.red)
         } label: {
             Image(systemName: "ellipsis")
                 .foregroundStyle(.secondary)
