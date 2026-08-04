@@ -1,0 +1,18 @@
+// AppConfig.xcconfig
+// Single source of truth for the app's version, shared by all targets
+// (ADHDoIt app, FocusActivity extension, and test bundles).
+//
+// Bump these two values to version the whole app:
+//   MARKETING_VERSION       -> the user-facing version (CFBundleShortVersionString), e.g. 1.2
+//   CURRENT_PROJECT_VERSION -> the build number (CFBundleVersion), increment for each build/submission
+
+MARKETING_VERSION = 1.1
+CURRENT_PROJECT_VERSION = 1.1
+
+// Reverse-DNS base for all bundle identifiers. Each target appends its own
+// suffix (e.g. .ADHDoIt, .ADHDoItTests, .ADHDoIt.FocusActivity).
+// Change this one line to re-namespace the whole app.
+PRODUCT_BUNDLE_IDENTIFIER_BASE = com.devinharmse
+
+// Application name
+APP_BUNDLE_NAME = ActuallyDidIt
