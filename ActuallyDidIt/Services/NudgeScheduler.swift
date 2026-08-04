@@ -9,8 +9,8 @@
 //
 //  Only tasks that are pending and due today (or overdue) are nudged, and only the single
 //  highest-priority one at a time — this keeps us well under iOS's 64 pending-notification limit.
-//  The reminders fire inside a daytime window defined per intensity (see
-//  `NudgeIntensity.dailyFireHours`).
+//  The reminders fire at the user-configurable times for the task's intensity (see
+//  `NudgeSchedule.fireTimes(for:)`).
 //
 
 import Foundation
@@ -81,16 +81,18 @@ final class NudgeScheduler {
 
     // MARK: - Building requests
 
-    /// One notification request per fire-hour that is still in the future today.
+    /// One notification request per configured fire-time that is still in the future today.
     /// `othersRemaining` is the number of other tasks also due today, surfaced in the body.
     private func makeRequests(for task: TaskItem, othersRemaining: Int) -> [UNNotificationRequest] {
         let calendar = Calendar.current
         let now = Date()
-        let startOfToday = calendar.startOfDay(for: now)
         let body = nudgeBody(for: task, othersRemaining: othersRemaining)
 
-        return task.nudgePolicy.intensity.dailyFireHours.compactMap { hour in
-            guard let fireDate = calendar.date(byAdding: .hour, value: hour, to: startOfToday),
+        return NudgeSchedule.fireTimes(for: task.nudgePolicy.intensity).enumerated().compactMap { index, time in
+            guard let fireDate = calendar.date(bySettingHour: time.hour ?? 0,
+                                               minute: time.minute ?? 0,
+                                               second: 0,
+                                               of: now),
                   fireDate > now else { return nil }
 
             let content = UNMutableNotificationContent()
@@ -100,7 +102,7 @@ final class NudgeScheduler {
 
             let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            let id = "\(Self.idPrefix)\(task.id.uuidString)-\(hour)"
+            let id = "\(Self.idPrefix)\(task.id.uuidString)-\(index)"
 
             return UNNotificationRequest(identifier: id, content: content, trigger: trigger)
         }

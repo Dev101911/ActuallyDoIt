@@ -55,16 +55,6 @@ enum NudgeIntensity: String, Codable, CaseIterable {
         }
     }
 
-    /// Hours of the day (24-hour clock) at which a nudge fires for a task at this intensity.
-    /// Reminders are kept inside a 9am–9pm window so the user is never woken at night.
-    var dailyFireHours: [Int] {
-        switch self {
-        case .gentle: return [9]
-        case .persistent: return [9, 15, 21]
-        case .relentless: return Array(9...21)
-        }
-    }
-
     /// Higher rank = more urgent. Used when ranking tasks for the "Up next" list.
     var rank: Int {
         switch self {

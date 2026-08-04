@@ -44,6 +44,18 @@ struct SettingsView: View {
                     Text("Accent colour sets the app's tint and the highlight on your focused task.")
                 }
 
+                Section {
+                    NavigationLink {
+                        NudgeTimesView()
+                    } label: {
+                        Label("Nudge times", systemImage: "bell.badge")
+                    }
+                } header: {
+                    Text("Nudges")
+                } footer: {
+                    Text("Set when reminders fire for each nudge level.")
+                }
+
                 TipJarView()
             }
             .navigationTitle("Settings")
