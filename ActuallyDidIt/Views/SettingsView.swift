@@ -56,7 +56,15 @@ struct SettingsView: View {
                     Text("Set when reminders fire for each nudge level.")
                 }
 
-                TipJarView()
+                Section {
+                    NavigationLink {
+                        TipJarView()
+                    } label: {
+                        Label("Support the developer", systemImage: "heart")
+                    }
+                } footer: {
+                    Text("ActuallyDidIt is made by one person. If it's helping you, a tip keeps it going — thank you! 💜")
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)

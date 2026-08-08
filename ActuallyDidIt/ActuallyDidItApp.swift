@@ -7,24 +7,125 @@
 
 import SwiftUI
 import SwiftData
+import CoreData
 
 @main
 struct ActuallyDidItApp: App {
     @AppStorage(AccentTheme.storageKey) private var accentTheme = AccentTheme.default
     @AppStorage(AppearanceTheme.storageKey) private var appearanceTheme = AppearanceTheme.default
 
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            TaskItem.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+    /// The iCloud container backing SwiftData's automatic sync. Must match the identifier declared
+    /// in `ActuallyDidIt.entitlements` and the iCloud capability in the target settings.
+    static let cloudKitContainerIdentifier = "iCloud.com.devinharmse.ActuallyDidIt"
+
+    let sharedModelContainer: ModelContainer = ActuallyDidItApp.makeSharedModelContainer()
+
+    /// Builds the SwiftData container through the versioned `AppMigrationPlan`.
+    ///
+    /// If the store can't be opened — almost always a migration that failed after an app update —
+    /// we do **not** `fatalError` (that would crash every launch and lock the user out of their
+    /// data permanently). Instead we move the existing store files aside, preserving them for
+    /// recovery, and retry with a fresh store so the app stays usable. A `fatalError` is kept only
+    /// as an unreachable last resort, when even an empty store can't be created.
+    static func makeSharedModelContainer() -> ModelContainer {
+        let schema = Schema(versionedSchema: CurrentSchema.self)
+        let configuration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .private(cloudKitContainerIdentifier)
+        )
+
+        // In DEBUG, ensure the CloudKit development schema is fully materialised before we open the
+        // syncing store (see `initializeCloudKitSchema`). Best-effort and non-fatal.
+        #if DEBUG
+        initializeCloudKitSchema(schema: schema, configuration: configuration)
+        #endif
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, migrationPlan: AppMigrationPlan.self, configurations: [configuration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // Preserve the unreadable store rather than losing it, then start clean.
+            backupStoreFiles(at: configuration.url, reason: error)
+
+            do {
+                return try ModelContainer(for: schema, migrationPlan: AppMigrationPlan.self, configurations: [configuration])
+            } catch {
+                fatalError("Could not create ModelContainer even after preserving the existing store: \(error)")
+            }
         }
-    }()
+    }
+
+    #if DEBUG
+    /// Pushes the current model schema to the CloudKit **development** environment so every record
+    /// type and field exists server-side. This is what lets you later click "Deploy Schema to
+    /// Production" in the CloudKit Console with a complete schema, rather than relying on lazy
+    /// creation (which only registers fields it has actually seen data for).
+    ///
+    /// Best-effort by design: it never crashes the app. If it can't run — e.g. the simulator isn't
+    /// signed into iCloud, or there's no network — SwiftData still creates the schema lazily on the
+    /// first sync. The temporary Core Data store is unloaded before we return so it doesn't contend
+    /// with the SwiftData container for the same on-disk file.
+    private static func initializeCloudKitSchema(schema: Schema, configuration: ModelConfiguration) {
+        do {
+            try autoreleasepool {
+                let description = NSPersistentStoreDescription(url: configuration.url)
+                description.cloudKitContainerOptions =
+                    NSPersistentCloudKitContainerOptions(containerIdentifier: cloudKitContainerIdentifier)
+                // Load synchronously so the store is ready before we initialize the schema.
+                description.shouldAddStoreAsynchronously = false
+
+                guard let model = NSManagedObjectModel.makeManagedObjectModel(for: CurrentSchema.models) else { return }
+                let container = NSPersistentCloudKitContainer(name: "ActuallyDidIt", managedObjectModel: model)
+                container.persistentStoreDescriptions = [description]
+                container.loadPersistentStores { _, error in
+                    if let error { print("CloudKit schema init: store load failed: \(error)") }
+                }
+
+                try container.initializeCloudKitSchema()
+
+                // Unload the store so it doesn't fight the SwiftData container for the same file.
+                if let store = container.persistentStoreCoordinator.persistentStores.first {
+                    try container.persistentStoreCoordinator.remove(store)
+                }
+            }
+        } catch {
+            print("CloudKit schema init skipped: \(error)")
+        }
+    }
+    #endif
+
+    /// Moves the SwiftData store and its `-wal`/`-shm` sidecar files into a timestamped backup
+    /// folder next to the store. Nothing is deleted, so a failed migration is recoverable (via
+    /// support, a future re-import path, or manual inspection) instead of silently discarded.
+    private static func backupStoreFiles(at storeURL: URL, reason: Error) {
+        let fileManager = FileManager.default
+        let directory = storeURL.deletingLastPathComponent()
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let backupDirectory = directory.appendingPathComponent("CorruptStoreBackup-\(stamp)", isDirectory: true)
+
+        do {
+            try fileManager.createDirectory(at: backupDirectory, withIntermediateDirectories: true)
+        } catch {
+            print("SwiftData store recovery: could not create backup directory: \(error)")
+            return
+        }
+
+        // The store is backed by three files that must move together.
+        let sidecars = ["", "-wal", "-shm"]
+        for suffix in sidecars {
+            let source = URL(fileURLWithPath: storeURL.path + suffix)
+            guard fileManager.fileExists(atPath: source.path) else { continue }
+
+            let destination = backupDirectory.appendingPathComponent(source.lastPathComponent)
+            do {
+                try fileManager.moveItem(at: source, to: destination)
+            } catch {
+                print("SwiftData store recovery: could not move \(source.lastPathComponent): \(error)")
+            }
+        }
+
+        print("SwiftData store recovery: opening the store failed (\(reason)). Preserved existing store at \(backupDirectory.path) and started a fresh store.")
+    }
 
     var body: some Scene {
         WindowGroup {
