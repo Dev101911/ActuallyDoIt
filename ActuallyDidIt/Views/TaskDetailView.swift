@@ -93,6 +93,7 @@ struct TaskDetailView: View {
             }
             .sheet(item: $editingTask) { task in
                 AddEditTaskView(task: task)
+                    .interactiveDismissDisabled()
             }
         }
     }

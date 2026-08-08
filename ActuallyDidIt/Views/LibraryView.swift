@@ -87,6 +87,7 @@ struct LibraryView: View {
             }
             .sheet(isPresented: $showingAdd) {
                 AddEditTaskView()
+                    .interactiveDismissDisabled()
             }
             .confirmationDialog(
                 "Delete this task?",

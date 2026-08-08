@@ -86,9 +86,11 @@ struct TaskListRow: View {
         .listRowBackground(task.isCurrent ? accentTheme.color.opacity(0.12) : nil)
         .sheet(item: $editingTask) { task in
             AddEditTaskView(task: task)
+                .interactiveDismissDisabled()
         }
         .sheet(isPresented: $showingDetail) {
             TaskDetailView(task: task)
+                .interactiveDismissDisabled()
         }
         .confirmationDialog(
             "Delete this task?",
