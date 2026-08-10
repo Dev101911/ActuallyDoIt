@@ -13,14 +13,13 @@ import CoreData
 struct ActuallyDidItApp: App {
     @AppStorage(AccentTheme.storageKey) private var accentTheme = AccentTheme.default
     @AppStorage(AppearanceTheme.storageKey) private var appearanceTheme = AppearanceTheme.default
-
-    /// The iCloud container backing SwiftData's automatic sync. Must match the identifier declared
-    /// in `ActuallyDidIt.entitlements` and the iCloud capability in the target settings.
-    static let cloudKitContainerIdentifier = "iCloud.com.devinharmse.ActuallyDidIt"
+    @Environment(\.scenePhase) private var scenePhase
 
     let sharedModelContainer: ModelContainer = ActuallyDidItApp.makeSharedModelContainer()
 
-    /// Builds the SwiftData container through the versioned `AppMigrationPlan`.
+    /// Builds the SwiftData container for the shared App Group store (see `SharedStore`) through the
+    /// versioned `AppMigrationPlan`. The app opens the store *with* CloudKit; the widget extension
+    /// opens the same store without it.
     ///
     /// If the store can't be opened — almost always a migration that failed after an app update —
     /// we do **not** `fatalError` (that would crash every launch and lock the user out of their
@@ -28,27 +27,23 @@ struct ActuallyDidItApp: App {
     /// recovery, and retry with a fresh store so the app stays usable. A `fatalError` is kept only
     /// as an unreachable last resort, when even an empty store can't be created.
     static func makeSharedModelContainer() -> ModelContainer {
-        let schema = Schema(versionedSchema: CurrentSchema.self)
-        let configuration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            cloudKitDatabase: .private(cloudKitContainerIdentifier)
-        )
+        // One-time move of any pre-App-Group store into the shared container.
+        SharedStore.relocateLegacyStoreIfNeeded()
 
         // In DEBUG, ensure the CloudKit development schema is fully materialised before we open the
         // syncing store (see `initializeCloudKitSchema`). Best-effort and non-fatal.
         #if DEBUG
-        initializeCloudKitSchema(schema: schema, configuration: configuration)
+        initializeCloudKitSchema()
         #endif
 
         do {
-            return try ModelContainer(for: schema, migrationPlan: AppMigrationPlan.self, configurations: [configuration])
+            return try SharedStore.makeContainer(cloudKit: true)
         } catch {
             // Preserve the unreadable store rather than losing it, then start clean.
-            backupStoreFiles(at: configuration.url, reason: error)
+            backupStoreFiles(at: SharedStore.storeURL, reason: error)
 
             do {
-                return try ModelContainer(for: schema, migrationPlan: AppMigrationPlan.self, configurations: [configuration])
+                return try SharedStore.makeContainer(cloudKit: true)
             } catch {
                 fatalError("Could not create ModelContainer even after preserving the existing store: \(error)")
             }
@@ -65,12 +60,12 @@ struct ActuallyDidItApp: App {
     /// signed into iCloud, or there's no network — SwiftData still creates the schema lazily on the
     /// first sync. The temporary Core Data store is unloaded before we return so it doesn't contend
     /// with the SwiftData container for the same on-disk file.
-    private static func initializeCloudKitSchema(schema: Schema, configuration: ModelConfiguration) {
+    private static func initializeCloudKitSchema() {
         do {
             try autoreleasepool {
-                let description = NSPersistentStoreDescription(url: configuration.url)
+                let description = NSPersistentStoreDescription(url: SharedStore.storeURL)
                 description.cloudKitContainerOptions =
-                    NSPersistentCloudKitContainerOptions(containerIdentifier: cloudKitContainerIdentifier)
+                    NSPersistentCloudKitContainerOptions(containerIdentifier: SharedStore.cloudKitContainerIdentifier)
                 // Load synchronously so the store is ready before we initialize the schema.
                 description.shouldAddStoreAsynchronously = false
 
@@ -146,6 +141,14 @@ struct ActuallyDidItApp: App {
                 }
                 .tint(accentTheme.color)
                 .background(AppearanceStyleSetter(style: appearanceTheme.uiStyle))
+                .onChange(of: scenePhase) { _, newPhase in
+                    // Coming back to the foreground: a task may have been started or completed
+                    // from the widget while we were backgrounded. Re-sync the Live Activity and
+                    // nudges with the (possibly changed) store state.
+                    guard newPhase == .active else { return }
+                    FocusActivityController.shared.restore(in: sharedModelContainer.mainContext)
+                    NudgeScheduler.shared.reconcile(in: sharedModelContainer.mainContext)
+                }
         }
         .modelContainer(sharedModelContainer)
     }

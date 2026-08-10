@@ -60,6 +60,7 @@
 		DB7CC3133020BA43005C873C /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		DB923A413021CB6400416506 /* Tips.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tips.storekit; sourceTree = "<group>"; };
 		DB923A473021D41300416506 /* AppConfig.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppConfig.xcconfig; sourceTree = "<group>"; };
+		DB928B5C30296ADB0090066D /* FocusActivityExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FocusActivityExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -73,7 +74,15 @@
 		DB7CC32E3020BFB5005C873C /* Exceptions for "ActuallyDidIt" folder in "FocusActivityExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Models/AppSchema.swift,
+				Models/Enums.swift,
+				Models/NudgePolicy.swift,
+				Models/RecurrenceRule.swift,
+				Models/TaskItem.swift,
 				Services/FocusActivityAttributes.swift,
+				Services/SharedStore.swift,
+				Services/TaskMutations.swift,
+				Services/TaskPrioritizer.swift,
 			);
 			target = DB7CC30E3020BA43005C873C /* FocusActivityExtension */;
 		};
@@ -153,6 +162,7 @@
 		DB7CC2AF30207733005C873C = {
 			isa = PBXGroup;
 			children = (
+				DB928B5C30296ADB0090066D /* FocusActivityExtension.entitlements */,
 				DB7CC2BA30207733005C873C /* ActuallyDidIt */,
 				DB7CC2CA30207734005C873C /* ActuallyDidItTests */,
 				DB7CC2D430207734005C873C /* ActuallyDidItUITests */,
@@ -686,6 +696,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FocusActivityExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5637TH9RYV;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -715,6 +726,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FocusActivityExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5637TH9RYV;
 				GENERATE_INFOPLIST_FILE = YES;

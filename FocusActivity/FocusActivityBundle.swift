@@ -12,5 +12,6 @@ import SwiftUI
 struct FocusActivityBundle: WidgetBundle {
     var body: some Widget {
         FocusActivityLiveActivity()
+        TasksWidget()
     }
 }
