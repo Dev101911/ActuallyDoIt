@@ -11,6 +11,8 @@
 		DB7CC3143020BA43005C873C /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DB7CC3133020BA43005C873C /* SwiftUI.framework */; };
 		DB7CC3233020BA44005C873C /* FocusActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DB7CC30F3020BA43005C873C /* FocusActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		DB923A423021CB6400416506 /* Tips.storekit in Resources */ = {isa = PBXBuildFile; fileRef = DB923A413021CB6400416506 /* Tips.storekit */; };
+		DB96BB4A303A7635000C4B9D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DB96BB49303A7635000C4B9D /* AppIcon.icon */; };
+		DB96BB4B303A7635000C4B9D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DB96BB49303A7635000C4B9D /* AppIcon.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,6 +63,7 @@
 		DB923A413021CB6400416506 /* Tips.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Tips.storekit; sourceTree = "<group>"; };
 		DB923A473021D41300416506 /* AppConfig.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppConfig.xcconfig; sourceTree = "<group>"; };
 		DB928B5C30296ADB0090066D /* FocusActivityExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FocusActivityExtension.entitlements; sourceTree = "<group>"; };
+		DB96BB49303A7635000C4B9D /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -171,6 +174,7 @@
 				DB7CC2B930207733005C873C /* Products */,
 				DB923A413021CB6400416506 /* Tips.storekit */,
 				DB923A473021D41300416506 /* AppConfig.xcconfig */,
+				DB96BB49303A7635000C4B9D /* AppIcon.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -343,6 +347,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DB923A423021CB6400416506 /* Tips.storekit in Resources */,
+				DB96BB4A303A7635000C4B9D /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -364,6 +369,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DB96BB4B303A7635000C4B9D /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
