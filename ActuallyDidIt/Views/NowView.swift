@@ -197,7 +197,7 @@ private struct EmptyNowView: View {
 
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 56))
-                .foregroundStyle(.green)
+                .foregroundStyle(.tint)
 
             VStack(spacing: 8) {
                 Text("Nothing on your plate")

@@ -52,6 +52,7 @@ struct AddEditTaskView: View {
     @State private var frequency: RecurrenceRule.Frequency
     @State private var interval: Int
     @State private var weekdays: Set<Int>
+    @State private var startDate: Date
 
     @State private var intensity: NudgeIntensity
 
@@ -80,6 +81,7 @@ struct AddEditTaskView: View {
         _frequency = State(initialValue: task?.recurrenceRule?.frequency ?? .weekly)
         _interval = State(initialValue: task?.recurrenceRule?.interval ?? 1)
         _weekdays = State(initialValue: Set(task?.recurrenceRule?.weekdays ?? []))
+        _startDate = State(initialValue: task?.recurrenceRule?.startDate ?? Date())
         _intensity = State(initialValue: task?.nudgePolicy.intensity ?? .gentle)
     }
 
@@ -134,6 +136,8 @@ struct AddEditTaskView: View {
                         }
                         Stepper("Every \(interval)", value: $interval, in: 1...30)
 
+                        DatePicker("Starting from", selection: $startDate, displayedComponents: .date)
+
                         if frequency == .weekly {
                             WeekdaySelector(selection: $weekdays)
                         }
@@ -187,9 +191,9 @@ struct AddEditTaskView: View {
             resolvedDue = includeTime ? dueDate : Calendar.current.startOfDay(for: dueDate)
         case .chore:
             let days = frequency == .weekly ? Array(weekdays) : nil
-            let rule = RecurrenceRule(frequency: frequency, interval: interval, weekdays: days)
+            let rule = RecurrenceRule(frequency: frequency, interval: interval, weekdays: days, startDate: startDate)
             recurrence = rule
-            // Seed the first occurrence so the chore starts nudging on its chosen day(s).
+            // Seed the first occurrence so the chore starts nudging on (or after) its start day.
             resolvedDue = rule.firstDueDate()
         }
 

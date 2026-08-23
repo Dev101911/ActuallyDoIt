@@ -36,10 +36,14 @@ struct RecurrenceRule: Codable, Hashable {
     /// this field decode cleanly (a missing key becomes `nil`).
     var weekdays: [Int]?
 
+    /// The day the schedule is allowed to begin on. The first occurrence lands on or after this
+    /// date; `nil` means "start today". Optional so older stored rules decode cleanly.
+    var startDate: Date?
+
     /// Whether this rule's frequency lets the user pin specific weekdays.
     var supportsWeekdays: Bool { frequency == .weekly }
 
-    init(frequency: Frequency, interval: Int = 1, weekdays: [Int]? = nil) {
+    init(frequency: Frequency, interval: Int = 1, weekdays: [Int]? = nil, startDate: Date? = nil) {
         self.frequency = frequency
         self.interval = max(1, interval)
         // Keep the stored days tidy: unique, sorted, and only when there are any.
@@ -48,6 +52,8 @@ struct RecurrenceRule: Codable, Hashable {
         } else {
             self.weekdays = nil
         }
+        // Pin the start to the beginning of its day so it compares cleanly against whole-day dues.
+        self.startDate = startDate.map { Calendar.current.startOfDay(for: $0) }
     }
 
     /// The next occurrence strictly after the given date.
@@ -68,10 +74,13 @@ struct RecurrenceRule: Codable, Hashable {
     }
 
     /// The first due date for a freshly created chore, anchored to the start of a day so reminders
-    /// land on whole days. When specific weekdays are chosen, that's today if today is one of them,
-    /// otherwise the next matching weekday.
+    /// land on whole days. When specific weekdays are chosen, that's the start day if it's one of
+    /// them, otherwise the next matching weekday. A `startDate` in the future pushes the first
+    /// occurrence out to that day; one in the past is ignored so the schedule never begins earlier
+    /// than the reference (normally today).
     func firstDueDate(from reference: Date = Date(), calendar: Calendar = .current) -> Date {
-        let startOfDay = calendar.startOfDay(for: reference)
+        let effectiveReference = max(reference, startDate ?? reference)
+        let startOfDay = calendar.startOfDay(for: effectiveReference)
         if supportsWeekdays, let weekdays, !weekdays.isEmpty {
             if weekdays.contains(calendar.component(.weekday, from: startOfDay)) {
                 return startOfDay
