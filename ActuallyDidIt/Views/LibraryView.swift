@@ -48,30 +48,36 @@ struct LibraryView: View {
                 }
 
                 if !todos.isEmpty {
-                    Section(isExpanded: $todosExpanded) {
-                        ForEach(todos) { openTaskRow($0) }
+                    Section {
+                        if todosExpanded {
+                            ForEach(todos) { openTaskRow($0) }
+                        }
                     } header: {
-                        Text("To Do")
+                        collapsibleHeader("To Do", isExpanded: $todosExpanded)
                     }
                 }
 
                 if !chores.isEmpty {
-                    Section(isExpanded: $choresExpanded) {
-                        ForEach(chores) { openTaskRow($0) }
+                    Section {
+                        if choresExpanded {
+                            ForEach(chores) { openTaskRow($0) }
+                        }
                     } header: {
-                        Text("Chores")
+                        collapsibleHeader("Chores", isExpanded: $choresExpanded)
                     }
                 }
 
                 if !completed.isEmpty {
-                    Section(isExpanded: $completedExpanded) {
-                        ForEach(completed) { completedTaskRow($0) }
+                    Section {
+                        if completedExpanded {
+                            ForEach(completed) { completedTaskRow($0) }
+                        }
                     } header: {
-                        Text("Completed (\(completed.count))")
+                        collapsibleHeader("Completed (\(completed.count))", isExpanded: $completedExpanded)
                     }
                 }
             }
-            .listStyle(.sidebar)
+            .listStyle(.insetGrouped)
             .navigationTitle("All tasks")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -106,6 +112,26 @@ struct LibraryView: View {
                 Text(task.title)
             }
         }
+    }
+
+    // MARK: - Headers
+
+    /// A tappable section header with a rotating chevron. Keeps rows flush-left (unlike
+    /// `DisclosureGroup`, which indents its contents) while still collapsing the section.
+    private func collapsibleHeader(_ title: String, isExpanded: Binding<Bool>) -> some View {
+        Button {
+            withAnimation { isExpanded.wrappedValue.toggle() }
+        } label: {
+            HStack {
+                Text(title)
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .rotationEffect(.degrees(isExpanded.wrappedValue ? 0 : -90))
+            }
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Rows
@@ -143,41 +169,43 @@ struct LibraryView: View {
     }
 }
 
-/// The text/detail block for a task row. Callers add trailing accessories (star, menu).
+/// The text/detail block for a task row. Callers add trailing accessories (menu).
 /// Completed tasks are shown struck through and muted.
 struct TaskRowView: View {
     let task: TaskItem
     var isCompleted: Bool = false
 
+    /// The muted, text-only metadata line, e.g. "15 min · Tue, Aug 26" or "15 min · Weekly".
+    private var metadata: String {
+        var parts = [task.estimatedTimeLabel]
+        if task.isChore, let summary = task.recurrenceRule?.summary {
+            parts.append(summary)
+        } else if let due = task.dueDate {
+            parts.append(due.formatted(date: .abbreviated, time: .omitted))
+        }
+        return parts.joined(separator: " · ")
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(task.title)
-                .font(.body)
+                .font(.body.weight(.medium))
                 .strikethrough(isCompleted)
                 .foregroundStyle(isCompleted ? .secondary : .primary)
 
             if isCompleted {
                 if let completedAt = task.completedAt {
-                    Label("Done \(completedAt.formatted(date: .abbreviated, time: .omitted))",
-                          systemImage: "checkmark.circle")
+                    Text("Done \(completedAt.formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             } else {
-                HStack(spacing: 8) {
-                    Label(task.estimatedTimeLabel, systemImage: "clock")
-                    if task.isChore, let summary = task.recurrenceRule?.summary {
-                        Label(summary, systemImage: "repeat")
-                    } else if let due = task.dueDate {
-                        Label(due.formatted(date: .abbreviated, time: .omitted),
-                              systemImage: "calendar")
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text(metadata)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 }
 

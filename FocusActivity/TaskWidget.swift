@@ -121,7 +121,7 @@ private struct TasksSmallView: View {
                 ReasonLabel(text: "Up next")
                 ForEach(entry.upNext.prefix(2)) { task in
                     Text(task.title)
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.medium))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
@@ -190,6 +190,23 @@ private struct CurrentTaskBlock: View {
             }
             CompleteButton(taskID: current.id)
         }
+        .focusCard()
+    }
+}
+
+private extension View {
+    /// The app's "focus task" treatment: a soft accent-tinted card with a hairline accent
+    /// border, mirroring the Doing-now card on the main screen.
+    func focusCard() -> some View {
+        padding(10)
+            .background(
+                Color.accentColor.opacity(0.10),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.accentColor.opacity(0.20), lineWidth: 1)
+            )
     }
 }
 
@@ -211,7 +228,7 @@ private struct UpNextList: View {
                 ForEach(tasks.prefix(limit)) { task in
                     VStack(alignment: .leading, spacing: 1) {
                         Text(task.title)
-                            .font(.subheadline)
+                            .font(.subheadline.weight(.medium))
                             .lineLimit(1)
                         Text("\(task.reason) · \(task.estimatedMinutes) min")
                             .font(.caption2)

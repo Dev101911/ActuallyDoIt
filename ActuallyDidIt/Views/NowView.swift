@@ -15,7 +15,6 @@ struct NowView: View {
 
     @Query private var allTasks: [TaskItem]
 
-    @AppStorage(AccentTheme.storageKey) private var accentTheme = AccentTheme.default
     @AppStorage(TutorialView.storageKey) private var hasSeenTutorial = false
 
     @State private var showingLibrary = false
@@ -50,9 +49,11 @@ struct NowView: View {
                         if let currentTask {
                             Section {
                                 DoingNowSection(task: currentTask)
-                                    .listRowBackground(accentTheme.color.opacity(0.12))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                             } header: {
-                                SectionHeader(title: "Doing now", systemImage: "target")
+                                Text("Doing now")
                             }
                         }
 
@@ -62,8 +63,7 @@ struct NowView: View {
                                     TaskListRow(task: task)
                                 }
                             } header: {
-                                SectionHeader(title: currentTask != nil ? "Up next" : "Suggested next",
-                                              systemImage: "arrow.down.to.line")
+                                Text(currentTask != nil ? "Up next" : "Suggested next")
                             }
                         }
 
@@ -131,16 +131,17 @@ struct NowView: View {
 
 private struct DoingNowSection: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(AccentTheme.storageKey) private var accentTheme = AccentTheme.default
     let task: TaskItem
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(task.surfacingReason.uppercased())
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(accentTheme.color)
 
             Text(task.title)
-                .font(.title.weight(.bold))
+                .font(.title2.weight(.bold))
                 .multilineTextAlignment(.leading)
 
             Label(task.estimatedTimeLabel, systemImage: "clock")
@@ -163,31 +164,27 @@ private struct DoingNowSection: View {
             .controlSize(.large)
             .padding(.top, 4)
 
+            // Demoted to a quiet text button so "Done" is unambiguously the primary action.
             Button {
                 TaskActions.unfocus(task, in: modelContext)
             } label: {
                 Text("Can't do this now")
+                    .font(.subheadline)
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 4)
+        .padding(20)
+        .background(accentTheme.color.opacity(0.10), in: .rect(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(accentTheme.color.opacity(0.20), lineWidth: 1)
+        )
     }
 }
 
 // MARK: - Shared
-
-private struct SectionHeader: View {
-    let title: String
-    let systemImage: String
-
-    var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline)
-            .foregroundStyle(.secondary)
-    }
-}
 
 /// Shown when nothing is actionable — an invitation, never a backlog.
 private struct EmptyNowView: View {

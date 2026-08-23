@@ -36,7 +36,7 @@ struct FocusActivityLiveActivity: Widget {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(context.state.reason.uppercased())
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.tint)
                         Text(context.state.title)
                             .font(.headline)
                             .lineLimit(2)
@@ -77,7 +77,7 @@ private struct LockScreenView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(state.reason.uppercased())
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tint)
 
                 Text(state.title)
                     .font(.headline)

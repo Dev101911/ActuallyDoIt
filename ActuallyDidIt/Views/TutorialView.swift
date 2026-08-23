@@ -224,7 +224,7 @@ private struct DoingNowIllustration: View {
     var body: some View {
         IllustrationCard {
             VStack(alignment: .leading, spacing: 12) {
-                Label("DOING NOW", systemImage: "target")
+                Text("DOING NOW")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tint)
 
@@ -243,10 +243,14 @@ private struct DoingNowIllustration: View {
                     .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.tint))
                     .padding(.top, 4)
             }
-            .padding(4)
+            .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.12))
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.10))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Color.accentColor.opacity(0.20), lineWidth: 1)
             )
         }
     }
@@ -274,15 +278,11 @@ private struct PickForMeIllustration: View {
 private struct LibraryIllustration: View {
     var body: some View {
         IllustrationCard {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
                 ForEach(0..<4, id: \.self) { index in
-                    HStack(spacing: 12) {
-                        Image(systemName: "circle")
-                            .foregroundStyle(.tertiary)
-                        VStack(alignment: .leading, spacing: 6) {
-                            MockLine(widthFraction: [0.8, 0.55, 0.9, 0.65][index], emphasized: index == 0)
-                            MockLine(widthFraction: [0.4, 0.3, 0.5, 0.35][index])
-                        }
+                    VStack(alignment: .leading, spacing: 6) {
+                        MockLine(widthFraction: [0.8, 0.55, 0.9, 0.65][index], emphasized: index == 0)
+                        MockLine(widthFraction: [0.4, 0.3, 0.5, 0.35][index])
                     }
                 }
             }
@@ -385,7 +385,7 @@ private struct WidgetsIllustration: View {
         HStack(spacing: 16) {
             // Home Screen widget
             VStack(alignment: .leading, spacing: 8) {
-                Label("NOW", systemImage: "target")
+                Text("NOW")
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.tint)
                 MockLine(widthFraction: 0.9, emphasized: true)
