@@ -103,6 +103,9 @@ struct AddEditTaskView: View {
                     Text(intensity.detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    NudgeTimeline(intensity: intensity)
+                        .padding(.vertical, 4)
                 }
             }
             .navigationTitle(isEditing ? "Edit task" : "New task")
@@ -151,6 +154,88 @@ struct AddEditTaskView: View {
 
         NudgeScheduler.shared.reconcile(in: modelContext)
         dismiss()
+    }
+}
+
+/// A compact timeline showing when nudges fall across the day, using the times the user has
+/// configured for each intensity in Settings, so the selected intensity is easy to picture.
+private struct NudgeTimeline: View {
+    let intensity: NudgeIntensity
+
+    private let dotSize: CGFloat = 8
+
+    /// The configured fire times (minutes from midnight), sorted ascending.
+    private var markers: [Int] { NudgeSchedule.fireMinutes(for: intensity) }
+
+    /// The window the timeline spans, from the earliest to the latest nudge.
+    private var window: (lo: Int, hi: Int) {
+        let lo = markers.min() ?? 0
+        let hi = markers.max() ?? lo
+        return (lo, hi)
+    }
+
+    /// Normalised position (0…1) of a marker within the window. A single marker sits centred.
+    private func position(for minutes: Int) -> Double {
+        let (lo, hi) = window
+        guard hi > lo else { return 0.5 }
+        return Double(minutes - lo) / Double(hi - lo)
+    }
+
+    private func label(forMinutes minutes: Int) -> String {
+        NudgeSchedule.date(fromMinutes: minutes)
+            .formatted(date: .omitted, time: .shortened)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { geo in
+                let radius = dotSize / 2
+                let usableWidth = max(geo.size.width - dotSize, 0)
+
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(.quaternary)
+                        .frame(height: 4)
+
+                    ForEach(markers, id: \.self) { minutes in
+                        Circle()
+                            .fill(.tint)
+                            .frame(width: dotSize, height: dotSize)
+                            .position(x: radius + position(for: minutes) * usableWidth,
+                                      y: geo.size.height / 2)
+                    }
+                }
+                .frame(height: geo.size.height)
+            }
+            .frame(height: dotSize)
+            .animation(.snappy, value: intensity)
+
+            if markers.count == 1 {
+                Text(label(forMinutes: window.lo))
+                    .frame(maxWidth: .infinity)
+            } else if markers.count > 1 {
+                ZStack {
+                    HStack {
+                        Text(label(forMinutes: window.lo))
+                        Spacer()
+                        Text(label(forMinutes: window.hi))
+                    }
+
+                    // Label the middle dot too when there are exactly three (Persistent).
+                    if markers.count == 3 {
+                        GeometryReader { geo in
+                            let radius = dotSize / 2
+                            let usableWidth = max(geo.size.width - dotSize, 0)
+                            Text(label(forMinutes: markers[1]))
+                                .position(x: radius + position(for: markers[1]) * usableWidth,
+                                          y: geo.size.height / 2)
+                        }
+                    }
+                }
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.tertiary)
     }
 }
 

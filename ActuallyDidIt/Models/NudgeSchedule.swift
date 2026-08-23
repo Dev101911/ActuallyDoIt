@@ -51,6 +51,25 @@ enum NudgeSchedule {
         }
     }
 
+    /// The configured fire times for the given intensity, expressed as minutes-from-midnight and
+    /// sorted ascending. Same source of truth as `fireTimes(for:)`, in the unit the timeline
+    /// preview needs to position its markers.
+    static func fireMinutes(for intensity: NudgeIntensity) -> [Int] {
+        switch intensity {
+        case .gentle:
+            return [read(gentleKey, default: gentleDefault)]
+        case .persistent:
+            return persistentKeys.enumerated()
+                .map { index, key in read(key, default: persistentDefaults[index]) }
+                .sorted()
+        case .relentless:
+            let start = read(relentlessStartKey, default: relentlessStartDefault)
+            let end = read(relentlessEndKey, default: relentlessEndDefault)
+            guard start <= end else { return [] }
+            return Array(stride(from: start, through: end, by: 60))
+        }
+    }
+
     // MARK: - Conversions for time pickers
 
     /// A `Date` today at the given minutes-from-midnight, for binding to a `DatePicker`.

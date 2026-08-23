@@ -144,7 +144,7 @@ private enum TutorialStep: CaseIterable, Hashable {
     var message: String {
         switch self {
         case .welcome:
-            return "ActuallyDidIt keeps you focused on a single task instead of a daunting list. Let's take a quick tour."
+            return "If you tend to forget tasks — or swipe reminders away and never come back to them — ActuallyDidIt is built for you. It keeps gently resurfacing the one thing to do next until you've actually done it. Let's take a quick tour."
         case .doingNow:
             return "The Now screen shows the one thing you're doing right now. Tap Done when you finish, or “Can't do this now” to step away without losing it."
         case .pickForMe:
