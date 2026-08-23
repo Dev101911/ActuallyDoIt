@@ -15,17 +15,43 @@ struct AddEditTaskView: View {
     /// The task being edited, or nil when creating a new one.
     private let existingTask: TaskItem?
 
+    /// The kind of task being created, which decides what scheduling fields are shown.
+    private enum TaskKind: String, CaseIterable, Identifiable {
+        case dueDate
+        case chore
+        case none
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .none: return "None"
+            case .dueDate: return "Due date"
+            case .chore: return "Chore"
+            }
+        }
+
+        var detail: String {
+            switch self {
+            case .none: return "A simple to-do with no schedule and no Nudges."
+            case .dueDate: return "A one-off task with a deadline."
+            case .chore: return "A recurring task that repeats on a schedule."
+            }
+        }
+    }
+
     @State private var title: String
     @State private var notes: String
     @State private var estimatedMinutes: Int
 
-    @State private var hasDueDate: Bool
+    @State private var kind: TaskKind
+
     @State private var dueDate: Date
     @State private var includeTime: Bool
 
-    @State private var isRecurring: Bool
     @State private var frequency: RecurrenceRule.Frequency
     @State private var interval: Int
+    @State private var weekdays: Set<Int>
 
     @State private var intensity: NudgeIntensity
 
@@ -34,13 +60,26 @@ struct AddEditTaskView: View {
         _title = State(initialValue: task?.title ?? "")
         _notes = State(initialValue: task?.notes ?? "")
         _estimatedMinutes = State(initialValue: task?.estimatedMinutes ?? 15)
-        _hasDueDate = State(initialValue: task?.dueDate != nil)
+
+        // Derive the task kind from what the stored task already has; new tasks default to a due date.
+        let initialKind: TaskKind
+        if task?.recurrenceRule != nil {
+            initialKind = .chore
+        } else if task?.dueDate != nil {
+            initialKind = .dueDate
+        } else if task == nil {
+            initialKind = .dueDate
+        } else {
+            initialKind = .none
+        }
+        _kind = State(initialValue: initialKind)
+
         _dueDate = State(initialValue: task?.dueDate ?? Date())
         // Treat a stored due date that isn't pinned to midnight as having a specific time.
         _includeTime = State(initialValue: task?.dueDate.map { Calendar.current.startOfDay(for: $0) != $0 } ?? false)
-        _isRecurring = State(initialValue: task?.recurrenceRule != nil)
         _frequency = State(initialValue: task?.recurrenceRule?.frequency ?? .weekly)
         _interval = State(initialValue: task?.recurrenceRule?.interval ?? 1)
+        _weekdays = State(initialValue: Set(task?.recurrenceRule?.weekdays ?? []))
         _intensity = State(initialValue: task?.nudgePolicy.intensity ?? .gentle)
     }
 
@@ -66,46 +105,57 @@ struct AddEditTaskView: View {
                     }
                 }
 
-                Section("Chore (recurring)") {
-                    Toggle("Repeats", isOn: $isRecurring)
-                    if isRecurring {
+                Section("Type") {
+                    Picker("Type", selection: $kind) {
+                        ForEach(TaskKind.allCases) { kind in
+                            Text(kind.label).tag(kind)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    switch kind {
+                    case .none:
+                        Text(kind.detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                    case .dueDate:
+                        DatePicker("Due", selection: $dueDate, displayedComponents: .date)
+                        Toggle("Include time", isOn: $includeTime)
+                        if includeTime {
+                            DatePicker("Time", selection: $dueDate, displayedComponents: .hourAndMinute)
+                        }
+
+                    case .chore:
                         Picker("Frequency", selection: $frequency) {
                             ForEach(RecurrenceRule.Frequency.allCases, id: \.self) { freq in
                                 Text(freq.label).tag(freq)
                             }
                         }
                         Stepper("Every \(interval)", value: $interval, in: 1...30)
-                    }
-                }
 
-                if !isRecurring {
-                    Section("Deadline") {
-                        Toggle("Has a due date", isOn: $hasDueDate)
-                        if hasDueDate {
-                            Toggle("Include time", isOn: $includeTime)
-                            DatePicker(
-                                "Due",
-                                selection: $dueDate,
-                                displayedComponents: includeTime ? [.date, .hourAndMinute] : .date
-                            )
+                        if frequency == .weekly {
+                            WeekdaySelector(selection: $weekdays)
                         }
                     }
                 }
 
-                Section("Nudge intensity") {
-                    Picker("Intensity", selection: $intensity) {
-                        ForEach(NudgeIntensity.allCases, id: \.self) { level in
-                            Text(level.label).tag(level)
+                if kind != .none {
+                    Section("Nudge intensity") {
+                        Picker("Intensity", selection: $intensity) {
+                            ForEach(NudgeIntensity.allCases, id: \.self) { level in
+                                Text(level.label).tag(level)
+                            }
                         }
+                        .pickerStyle(.segmented)
+
+                        Text(intensity.detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        NudgeTimeline(intensity: intensity)
+                            .padding(.vertical, 4)
                     }
-                    .pickerStyle(.segmented)
-
-                    Text(intensity.detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    NudgeTimeline(intensity: intensity)
-                        .padding(.vertical, 4)
                 }
             }
             .navigationTitle(isEditing ? "Edit task" : "New task")
@@ -122,15 +172,25 @@ struct AddEditTaskView: View {
     }
 
     private func save() {
-        let recurrence = isRecurring ? RecurrenceRule(frequency: frequency, interval: interval) : nil
         let policy = NudgePolicy(intensity: intensity)
         let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let recurrence: RecurrenceRule?
         let resolvedDue: Date?
-        if !isRecurring && hasDueDate {
+        switch kind {
+        case .none:
+            recurrence = nil
+            resolvedDue = nil
+        case .dueDate:
+            recurrence = nil
             // Without a specific time, pin the due date to the start of the day.
             resolvedDue = includeTime ? dueDate : Calendar.current.startOfDay(for: dueDate)
-        } else {
-            resolvedDue = nil
+        case .chore:
+            let days = frequency == .weekly ? Array(weekdays) : nil
+            let rule = RecurrenceRule(frequency: frequency, interval: interval, weekdays: days)
+            recurrence = rule
+            // Seed the first occurrence so the chore starts nudging on its chosen day(s).
+            resolvedDue = rule.firstDueDate()
         }
 
         if let task = existingTask {
@@ -236,6 +296,63 @@ private struct NudgeTimeline: View {
         }
         .font(.caption2)
         .foregroundStyle(.tertiary)
+    }
+}
+
+/// A row of circular day toggles for choosing which weekdays a weekly chore repeats on.
+/// Days are ordered starting from the user's locale's first weekday, and selection is stored as
+/// `Calendar` weekday numbers (1 = Sunday … 7 = Saturday).
+private struct WeekdaySelector: View {
+    @Binding var selection: Set<Int>
+
+    private let calendar = Calendar.current
+
+    /// Weekday numbers ordered from the locale's first weekday.
+    private var orderedWeekdays: [Int] {
+        (0..<7).map { (calendar.firstWeekday - 1 + $0) % 7 + 1 }
+    }
+
+    private func symbol(for weekday: Int) -> String {
+        calendar.veryShortWeekdaySymbols[weekday - 1]
+    }
+
+    private func fullName(for weekday: Int) -> String {
+        calendar.weekdaySymbols[weekday - 1]
+    }
+
+    private func toggle(_ weekday: Int) {
+        if selection.contains(weekday) {
+            selection.remove(weekday)
+        } else {
+            selection.insert(weekday)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("On these days")
+                .font(.subheadline)
+
+            HStack(spacing: 6) {
+                ForEach(orderedWeekdays, id: \.self) { weekday in
+                    let isOn = selection.contains(weekday)
+                    Button {
+                        toggle(weekday)
+                    } label: {
+                        Text(symbol(for: weekday))
+                            .font(.footnote.weight(.semibold))
+                            .frame(width: 36, height: 36)
+                            .background(isOn ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary), in: Circle())
+                            .foregroundStyle(isOn ? Color.white : Color.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel(fullName(for: weekday))
+                    .accessibilityAddTraits(isOn ? .isSelected : [])
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 

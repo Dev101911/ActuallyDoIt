@@ -6,8 +6,8 @@
 //   MARKETING_VERSION       -> the user-facing version (CFBundleShortVersionString), e.g. 1.2
 //   CURRENT_PROJECT_VERSION -> the build number (CFBundleVersion), increment for each build/submission
 
-MARKETING_VERSION = 1.7
-CURRENT_PROJECT_VERSION = 1.7
+MARKETING_VERSION = 1.8
+CURRENT_PROJECT_VERSION = 1.8
 
 // Reverse-DNS base for all bundle identifiers. Each target appends its own
 // suffix (e.g. .ADHDoIt, .ADHDoItTests, .ADHDoIt.FocusActivity).
