@@ -78,7 +78,7 @@ enum AccentTheme: String, Codable, CaseIterable, Identifiable {
     case green
 
     /// The default used when no preference has been saved yet.
-    static let `default`: AccentTheme = .blue
+    static let `default`: AccentTheme = .green
 
     /// The `@AppStorage` key shared by every view that reads the theme.
     static let storageKey = "accentTheme"

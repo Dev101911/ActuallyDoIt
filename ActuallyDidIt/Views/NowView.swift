@@ -16,11 +16,13 @@ struct NowView: View {
     @Query private var allTasks: [TaskItem]
 
     @AppStorage(AccentTheme.storageKey) private var accentTheme = AccentTheme.default
+    @AppStorage(TutorialView.storageKey) private var hasSeenTutorial = false
 
     @State private var showingLibrary = false
     @State private var showingAdd = false
     @State private var showingPickForMe = false
     @State private var showingSettings = false
+    @State private var showingTutorial = false
 
     private var currentTask: TaskItem? {
         allTasks.first { $0.isCurrent }
@@ -116,6 +118,11 @@ struct NowView: View {
             .sheet(isPresented: $showingAdd) { AddEditTaskView().interactiveDismissDisabled() }
             .sheet(isPresented: $showingPickForMe) { PickForMeSheet().interactiveDismissDisabled() }
             .sheet(isPresented: $showingSettings) { SettingsView().interactiveDismissDisabled() }
+            .fullScreenCover(isPresented: $showingTutorial) { TutorialView() }
+            .task {
+                // Auto-present the tour once, on first launch.
+                if !hasSeenTutorial { showingTutorial = true }
+            }
         }
     }
 }

@@ -7,9 +7,14 @@
 //  scheduled reminders from the current store state, so nudges automatically stop the moment a
 //  task is completed or deleted.
 //
-//  Only tasks that are pending and due today (or overdue) are nudged, and only the single
-//  highest-priority one at a time — this keeps us well under iOS's 64 pending-notification limit.
-//  The reminders fire at the user-configurable times for the task's intensity (see
+//  Every task that is pending and due today (or overdue) is nudged. Because iOS caps an app at 64
+//  pending notifications, we schedule within a safe budget (`safeBudget`): first we guarantee each
+//  due task at least one reminder in priority order, then we spend the remaining budget on the
+//  extra reminders of the highest-priority tasks. If there are more due tasks than the budget can
+//  cover, the overflow tasks are summarised in a single "N more due today" notification rather than
+//  being silently dropped by iOS.
+//
+//  Reminders fire at the user-configurable times for each task's intensity (see
 //  `NudgeSchedule.fireTimes(for:)`).
 //
 
@@ -30,6 +35,10 @@ final class NudgeScheduler {
     /// own set without disturbing notifications scheduled elsewhere.
     private static let idPrefix = "nudge-"
 
+    /// The most reminders we'll ever have pending at once. iOS silently drops anything past 64, so
+    /// we stay comfortably under it and leave headroom for the summary notification.
+    private static let safeBudget = 60
+
     /// Asks the user for permission to post reminders. Safe to call on every launch.
     func requestAuthorization() async {
         do {
@@ -40,13 +49,10 @@ final class NudgeScheduler {
     }
 
     /// Rebuilds the set of scheduled nudges to match the current store state.
-    /// Clears everything this scheduler previously scheduled, then re-adds reminders for the single
-    /// highest-priority eligible task.
+    /// Clears everything this scheduler previously scheduled, then re-adds the budgeted set of
+    /// reminders for every eligible task.
     func reconcile(in context: ModelContext) {
-        let eligible = eligibleTasks(in: context).sorted(by: TaskPrioritizer.isHigherPriority)
-        let requests = eligible.first.map { top in
-            makeRequests(for: top, othersRemaining: eligible.count - 1)
-        } ?? []
+        let requests = buildRequests(in: context)
 
         Task {
             await clearOwnedRequests()
@@ -58,6 +64,59 @@ final class NudgeScheduler {
                 }
             }
         }
+    }
+
+    // MARK: - Request planning
+
+    /// Computes the full set of notification requests for the current store state, honouring the
+    /// notification budget. Pure and synchronous so the allocation logic is easy to reason about.
+    private func buildRequests(in context: ModelContext) -> [UNNotificationRequest] {
+        let calendar = Calendar.current
+        let now = Date()
+
+        let eligible = eligibleTasks(in: context).sorted(by: TaskPrioritizer.isHigherPriority)
+
+        // Pair each task with the fire times still ahead of us today, dropping tasks whose reminder
+        // windows have all passed — those can't be scheduled regardless of budget.
+        let candidates = eligible
+            .map { (task: $0, slots: futureFireSlots(for: $0, now: now, calendar: calendar)) }
+            .filter { !$0.slots.isEmpty }
+
+        guard !candidates.isEmpty else { return [] }
+
+        // If we can't give every task at least one reminder, reserve a slot for the summary.
+        var budget = Self.safeBudget
+        let willDropTasks = candidates.count > budget
+        if willDropTasks { budget -= 1 }
+
+        let guaranteedCount = min(candidates.count, budget)
+        let scheduled = candidates.prefix(guaranteedCount)
+        let dropped = candidates.dropFirst(guaranteedCount)
+
+        var requests: [UNNotificationRequest] = []
+
+        // Pass 1: guarantee every scheduled task its earliest remaining reminder.
+        for entry in scheduled {
+            let first = entry.slots[0]
+            requests.append(makeRequest(for: entry.task, fireDate: first.date, index: first.index, calendar: calendar))
+        }
+
+        // Pass 2: spend the remaining budget on extra reminders, highest priority first.
+        fill: for entry in scheduled {
+            for slot in entry.slots.dropFirst() {
+                if requests.count >= budget { break fill }
+                requests.append(makeRequest(for: entry.task, fireDate: slot.date, index: slot.index, calendar: calendar))
+            }
+        }
+
+        // Summary: fold any tasks that got no slot at all into a single notification, fired at the
+        // soonest moment one of them would have nudged.
+        if !dropped.isEmpty {
+            let earliest = dropped.compactMap { $0.slots.first?.date }.min() ?? now
+            requests.append(summaryRequest(droppedCount: dropped.count, fireDate: earliest, calendar: calendar))
+        }
+
+        return requests
     }
 
     // MARK: - Eligibility
@@ -81,42 +140,57 @@ final class NudgeScheduler {
 
     // MARK: - Building requests
 
-    /// One notification request per configured fire-time that is still in the future today.
-    /// `othersRemaining` is the number of other tasks also due today, surfaced in the body.
-    private func makeRequests(for task: TaskItem, othersRemaining: Int) -> [UNNotificationRequest] {
-        let calendar = Calendar.current
-        let now = Date()
-        let body = nudgeBody(for: task, othersRemaining: othersRemaining)
-
-        return NudgeSchedule.fireTimes(for: task.nudgePolicy.intensity).enumerated().compactMap { index, time in
+    /// The task's configured fire times that are still ahead of `now` today, paired with their
+    /// original index so notification identifiers stay stable across reconciles.
+    private func futureFireSlots(for task: TaskItem,
+                                 now: Date,
+                                 calendar: Calendar) -> [(index: Int, date: Date)] {
+        NudgeSchedule.fireTimes(for: task.nudgePolicy.intensity).enumerated().compactMap { index, time in
             guard let fireDate = calendar.date(bySettingHour: time.hour ?? 0,
                                                minute: time.minute ?? 0,
                                                second: 0,
                                                of: now),
                   fireDate > now else { return nil }
-
-            let content = UNMutableNotificationContent()
-            content.title = task.title
-            content.body = body
-            content.sound = .default
-
-            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-            let id = "\(Self.idPrefix)\(task.id.uuidString)-\(index)"
-
-            return UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+            return (index, fireDate)
         }
     }
 
-    /// Reminder body: the task's surfacing reason and estimate, plus a count of other tasks still
-    /// due for the day.
-    private func nudgeBody(for task: TaskItem, othersRemaining: Int) -> String {
-        var body = "\(task.surfacingReason) · \(task.estimatedTimeLabel)"
-        if othersRemaining > 0 {
-            let plural = othersRemaining == 1 ? "task" : "tasks"
-            body += " · \(othersRemaining) more \(plural) today"
-        }
-        return body
+    /// A single reminder request for one of a task's fire times.
+    private func makeRequest(for task: TaskItem,
+                             fireDate: Date,
+                             index: Int,
+                             calendar: Calendar) -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = task.title
+        content.body = nudgeBody(for: task)
+        content.sound = .default
+
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        let id = "\(Self.idPrefix)\(task.id.uuidString)-\(index)"
+
+        return UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+    }
+
+    /// One notification covering the tasks that couldn't fit in the budget.
+    private func summaryRequest(droppedCount: Int,
+                                fireDate: Date,
+                                calendar: Calendar) -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = "More tasks due today"
+        let plural = droppedCount == 1 ? "task" : "tasks"
+        content.body = "\(droppedCount) more \(plural) due today — open ActuallyDidIt to see them."
+        content.sound = .default
+
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+
+        return UNNotificationRequest(identifier: "\(Self.idPrefix)summary", content: content, trigger: trigger)
+    }
+
+    /// Reminder body: the task's surfacing reason and estimate.
+    private func nudgeBody(for task: TaskItem) -> String {
+        "\(task.surfacingReason) · \(task.estimatedTimeLabel)"
     }
 
     /// Removes only the pending requests this scheduler owns.

@@ -14,6 +14,8 @@ struct SettingsView: View {
     @AppStorage(AccentTheme.storageKey) private var accentTheme = AccentTheme.default
     @AppStorage(AppearanceTheme.storageKey) private var appearanceTheme = AppearanceTheme.default
 
+    @State private var showingTutorial = false
+
     var body: some View {
         NavigationStack {
             Form {
@@ -57,6 +59,18 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Button {
+                        showingTutorial = true
+                    } label: {
+                        Label("How it works", systemImage: "questionmark.circle")
+                    }
+                } header: {
+                    Text("Help")
+                } footer: {
+                    Text("Replay the quick tour of the app.")
+                }
+
+                Section {
                     NavigationLink {
                         TipJarView()
                     } label: {
@@ -68,6 +82,7 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .fullScreenCover(isPresented: $showingTutorial) { TutorialView() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
