@@ -31,7 +31,48 @@ enum NudgeSchedule {
     static let relentlessStartDefault = 9 * 60                 // 09:00
     static let relentlessEndDefault = 21 * 60                  // 21:00
 
-    // MARK: - Fire times
+    // MARK: - Fire times (per task)
+
+    /// The hour/minute components at which a nudge fires for a task, honouring the task's per-task
+    /// override (`NudgePolicy.customTimes`) when set and otherwise falling back to the global
+    /// schedule below.
+    static func fireTimes(for policy: NudgePolicy) -> [DateComponents] {
+        fireMinutes(for: policy).map(components(fromMinutes:))
+    }
+
+    /// The fire times for a task as minutes-from-midnight, sorted ascending. Uses the task's
+    /// override when present, otherwise the global schedule.
+    static func fireMinutes(for policy: NudgePolicy) -> [Int] {
+        guard let custom = policy.customTimes else {
+            return fireMinutes(for: policy.intensity)
+        }
+        switch policy.intensity {
+        case .gentle:
+            return [custom.gentleMinutes]
+        case .persistent:
+            return custom.persistentMinutes.sorted()
+        case .relentless:
+            guard custom.relentlessStartMinutes <= custom.relentlessEndMinutes else { return [] }
+            return Array(stride(from: custom.relentlessStartMinutes,
+                                through: custom.relentlessEndMinutes,
+                                by: 60))
+        }
+    }
+
+    /// The current global schedule captured as an override value, used to seed a task's custom
+    /// times when the user first opts in to overriding them.
+    static func currentTimes() -> NudgeTimes {
+        NudgeTimes(
+            gentleMinutes: read(gentleKey, default: gentleDefault),
+            persistentMinutes: persistentKeys.enumerated().map { index, key in
+                read(key, default: persistentDefaults[index])
+            },
+            relentlessStartMinutes: read(relentlessStartKey, default: relentlessStartDefault),
+            relentlessEndMinutes: read(relentlessEndKey, default: relentlessEndDefault)
+        )
+    }
+
+    // MARK: - Fire times (global schedule)
 
     /// The hour/minute components at which a nudge fires for the given intensity.
     /// Relentless fires on the same minute offset every hour across the waking window.
@@ -88,7 +129,7 @@ enum NudgeSchedule {
 
     // MARK: - Private
 
-    private static func components(fromMinutes minutes: Int) -> DateComponents {
+    nonisolated private static func components(fromMinutes minutes: Int) -> DateComponents {
         DateComponents(hour: minutes / 60, minute: minutes % 60)
     }
 

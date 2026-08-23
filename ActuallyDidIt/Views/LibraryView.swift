@@ -28,8 +28,12 @@ struct LibraryView: View {
     private var openTasks: [TaskItem] {
         allTasks.filter { $0.status != .completed }
     }
-    private var todos: [TaskItem] { openTasks.filter { !$0.isChore } }
-    private var chores: [TaskItem] { openTasks.filter { $0.isChore } }
+    private var todos: [TaskItem] {
+        openTasks.filter { !$0.isChore }.sorted(by: TaskItem.byOverdueThenDueDate)
+    }
+    private var chores: [TaskItem] {
+        openTasks.filter { $0.isChore }.sorted(by: TaskItem.byOverdueThenDueDate)
+    }
     private var completed: [TaskItem] {
         allTasks
             .filter { $0.status == .completed }
@@ -199,6 +203,10 @@ struct TaskRowView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            } else if task.isOverdue {
+                Text("Overdue · \(metadata)")
+                    .font(.caption)
+                    .foregroundStyle(.red)
             } else {
                 Text(metadata)
                     .font(.caption)

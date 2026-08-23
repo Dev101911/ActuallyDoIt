@@ -40,10 +40,14 @@ struct RecurrenceRule: Codable, Hashable {
     /// date; `nil` means "start today". Optional so older stored rules decode cleanly.
     var startDate: Date?
 
+    /// The last day the schedule may run. Occurrences after this date are dropped, so the chore
+    /// stops repeating; `nil` means "repeat forever". Optional so older stored rules decode cleanly.
+    var endDate: Date?
+
     /// Whether this rule's frequency lets the user pin specific weekdays.
     var supportsWeekdays: Bool { frequency == .weekly }
 
-    init(frequency: Frequency, interval: Int = 1, weekdays: [Int]? = nil, startDate: Date? = nil) {
+    init(frequency: Frequency, interval: Int = 1, weekdays: [Int]? = nil, startDate: Date? = nil, endDate: Date? = nil) {
         self.frequency = frequency
         self.interval = max(1, interval)
         // Keep the stored days tidy: unique, sorted, and only when there are any.
@@ -52,25 +56,32 @@ struct RecurrenceRule: Codable, Hashable {
         } else {
             self.weekdays = nil
         }
-        // Pin the start to the beginning of its day so it compares cleanly against whole-day dues.
+        // Pin start/end to the beginning of their day so they compare cleanly against whole-day dues.
         self.startDate = startDate.map { Calendar.current.startOfDay(for: $0) }
+        self.endDate = endDate.map { Calendar.current.startOfDay(for: $0) }
     }
 
-    /// The next occurrence strictly after the given date.
+    /// The next occurrence strictly after the given date, or `nil` once the schedule passes its
+    /// end date (if one is set).
     func nextDate(after date: Date, calendar: Calendar = .current) -> Date? {
+        let candidate: Date?
         if supportsWeekdays, let weekdays, !weekdays.isEmpty {
-            return nextWeekdayOccurrence(after: date, weekdays: Set(weekdays), calendar: calendar)
+            candidate = nextWeekdayOccurrence(after: date, weekdays: Set(weekdays), calendar: calendar)
+        } else {
+            switch frequency {
+            case .daily, .everyNDays:
+                candidate = calendar.date(byAdding: .day, value: interval, to: date)
+            case .weekly:
+                candidate = calendar.date(byAdding: .weekOfYear, value: interval, to: date)
+            case .monthly:
+                candidate = calendar.date(byAdding: .month, value: interval, to: date)
+            }
         }
-        switch frequency {
-        case .daily:
-            return calendar.date(byAdding: .day, value: interval, to: date)
-        case .everyNDays:
-            return calendar.date(byAdding: .day, value: interval, to: date)
-        case .weekly:
-            return calendar.date(byAdding: .weekOfYear, value: interval, to: date)
-        case .monthly:
-            return calendar.date(byAdding: .month, value: interval, to: date)
+        // Stop repeating once the schedule runs past its end date.
+        if let candidate, let endDate, candidate > endDate {
+            return nil
         }
+        return candidate
     }
 
     /// The first due date for a freshly created chore, anchored to the start of a day so reminders

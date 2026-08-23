@@ -27,7 +27,9 @@ struct PersistenceTests {
         #expect(SchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
         #expect(AppMigrationPlan.schemas.count == 1)
         #expect(AppMigrationPlan.schemas.first == SchemaV1.self)
-        // No stages yet: V1 is the baseline. Each future version adds exactly one stage here.
+        // No stages: additive changes (e.g. NudgePolicy's optional custom-time fields) are migrated
+        // by SwiftData's automatic lightweight inference. A stage is added only for a change
+        // inference can't handle on its own.
         #expect(AppMigrationPlan.stages.isEmpty)
         #expect(CurrentSchema.models.contains { $0 == TaskItem.self })
     }
@@ -80,10 +82,17 @@ struct PersistenceTests {
         let container = try ModelContainer(for: schema, configurations: [configuration])
 
         let context = ModelContext(container)
+        // Carry a per-task custom-time override so the flattened NudgePolicy fields round-trip too.
+        // Reading this composite back is the exact path that trapped at launch when the override was
+        // stored as a nested struct-with-array.
+        let override = NudgeTimes(gentleMinutes: 8 * 60,
+                                  persistentMinutes: [9 * 60, 13 * 60, 20 * 60],
+                                  relentlessStartMinutes: 7 * 60,
+                                  relentlessEndMinutes: 22 * 60)
         let task = TaskItem(title: "Buy milk",
                             estimatedMinutes: 25,
                             recurrenceRule: RecurrenceRule(frequency: .weekly, interval: 2),
-                            nudgePolicy: NudgePolicy(intensity: .persistent),
+                            nudgePolicy: NudgePolicy(intensity: .persistent, customTimes: override),
                             verificationMethod: .delayedRecheck)
         let savedID = task.id
         context.insert(task)
@@ -94,6 +103,7 @@ struct PersistenceTests {
         #expect(restored.title == "Buy milk")
         #expect(restored.estimatedMinutes == 25)
         #expect(restored.nudgePolicy.intensity == .persistent)
+        #expect(restored.nudgePolicy.customTimes == override)
         #expect(restored.recurrenceRule == RecurrenceRule(frequency: .weekly, interval: 2))
         #expect(restored.verificationMethod == .delayedRecheck)
     }

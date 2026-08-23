@@ -50,7 +50,7 @@ struct SettingsView: View {
                     NavigationLink {
                         NudgeTimesView()
                     } label: {
-                        Label("Nudge times", systemImage: "bell.badge")
+                        Label("Nudge time defaults", systemImage: "bell.badge")
                     }
                 } header: {
                     Text("Nudges")

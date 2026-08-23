@@ -42,6 +42,17 @@ enum SharedStore {
         groupContainerURL.appendingPathComponent(storeFileName)
     }
 
+    /// Whether an iCloud account is currently signed in on this device.
+    ///
+    /// A synchronous, network-free check (unlike `CKContainer.accountStatus`) used at launch to
+    /// decide whether to open the store with CloudKit mirroring. Opening a syncing store while
+    /// signed out triggers noisy — though non-fatal — CoreData+CloudKit account-recovery logging
+    /// (`CKAccountStatusNoAccount`, "Could not validate account info cache"), so we simply run the
+    /// store locally until an account is available. Sync resumes on the next launch after sign-in.
+    nonisolated static var iCloudAccountAvailable: Bool {
+        FileManager.default.ubiquityIdentityToken != nil
+    }
+
     /// Builds the SwiftData container for the shared store through the versioned `AppMigrationPlan`.
     /// Pass `cloudKit: true` from the app (which owns syncing) and `false` from the extension.
     nonisolated static func makeContainer(cloudKit: Bool) throws -> ModelContainer {

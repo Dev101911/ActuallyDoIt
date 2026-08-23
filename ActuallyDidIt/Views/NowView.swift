@@ -29,6 +29,7 @@ struct NowView: View {
 
     private var upNext: [TaskItem] {
         TaskPrioritizer.upNext(from: allTasks, limit: 3)
+            .sorted(by: TaskItem.byOverdueThenDueDate)
     }
 
     private var isEmpty: Bool {

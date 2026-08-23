@@ -27,6 +27,12 @@ final class TaskItem {
     /// When non-nil the task is a recurring **Chore**; when nil it is a one-off **ToDo**.
     var recurrenceRule: RecurrenceRule?
 
+    /// Optional "alert before due" for due-date tasks: how long before `dueDate` to post a single
+    /// reminder, in minutes. `nil` means no alert. For a date-only due date the value is a whole
+    /// number of days (see `dueAlertFireDate`). Additive optional scalar so existing rows migrate
+    /// cleanly.
+    var dueAlertLeadMinutes: Int?
+
     // Nudge engine state
     var nudgePolicy: NudgePolicy = NudgePolicy.default
     var lastNudgedAt: Date?
@@ -46,6 +52,7 @@ final class TaskItem {
          notes: String? = nil,
          estimatedMinutes: Int = 15,
          dueDate: Date? = nil,
+         dueAlertLeadMinutes: Int? = nil,
          recurrenceRule: RecurrenceRule? = nil,
          nudgePolicy: NudgePolicy = .default,
          verificationMethod: VerificationMethod = .tapToConfirm) {
@@ -54,6 +61,7 @@ final class TaskItem {
         self.notes = notes
         self.estimatedMinutes = estimatedMinutes
         self.dueDate = dueDate
+        self.dueAlertLeadMinutes = dueAlertLeadMinutes
         self.recurrenceRule = recurrenceRule
         self.nudgePolicy = nudgePolicy
         self.statusRaw = TaskStatus.pending.rawValue
@@ -79,12 +87,43 @@ extension TaskItem {
     /// A recurring Chore vs. a one-off ToDo.
     var isChore: Bool { recurrenceRule != nil }
 
+    /// Whether this task's due date carries a specific time of day, as opposed to being pinned to
+    /// the start of the day. Alerts are interpreted in minutes for timed due dates and in whole
+    /// days for date-only ones.
+    var dueDateHasTime: Bool {
+        guard let dueDate else { return false }
+        return Calendar.current.startOfDay(for: dueDate) != dueDate
+    }
+
+    /// When the "alert before due" reminder should fire, or `nil` when no alert is set.
+    ///
+    /// For a timed due date the lead is subtracted directly. For a date-only due date the lead is a
+    /// whole number of days and the alert fires at 9 AM on the resulting day, so reminders land at a
+    /// sensible hour rather than midnight.
+    func dueAlertFireDate() -> Date? {
+        guard let dueDate, let lead = dueAlertLeadMinutes else { return nil }
+        let calendar = Calendar.current
+        if dueDateHasTime {
+            return dueDate.addingTimeInterval(TimeInterval(-lead * 60))
+        }
+        let day = calendar.date(byAdding: .day, value: -(lead / (24 * 60)),
+                                to: calendar.startOfDay(for: dueDate)) ?? dueDate
+        return calendar.date(bySettingHour: 9, minute: 0, second: 0, of: day)
+    }
+
     /// Whether the task is currently the user's single focus.
     var isCurrent: Bool { focusStartedAt != nil }
 
     /// True when the task is available to be worked on / suggested right now.
     var isActionable: Bool {
         status == .pending
+    }
+
+    /// True when a pending task's due date has already passed (before today).
+    /// A task due *today* counts as "due today", not overdue.
+    var isOverdue: Bool {
+        guard status == .pending, let dueDate else { return false }
+        return dueDate < Calendar.current.startOfDay(for: Date())
     }
 
     /// A short reason string explaining why a task is being surfaced.
@@ -99,4 +138,17 @@ extension TaskItem {
 
     /// e.g. "15 min".
     var estimatedTimeLabel: String { "\(estimatedMinutes) min" }
+}
+
+// MARK: - Sorting
+
+extension TaskItem {
+    /// List ordering used by the task screens: overdue tasks first, then soonest due
+    /// date/time. Tasks without a due date sort last.
+    static func byOverdueThenDueDate(_ a: TaskItem, _ b: TaskItem) -> Bool {
+        if a.isOverdue != b.isOverdue { return a.isOverdue }
+        let aDue = a.dueDate ?? .distantFuture
+        let bDue = b.dueDate ?? .distantFuture
+        return aDue < bDue
+    }
 }

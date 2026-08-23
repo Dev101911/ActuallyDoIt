@@ -74,6 +74,11 @@ final class NudgeScheduler {
         let calendar = Calendar.current
         let now = Date()
 
+        // "Before due" alerts are scheduled first and independently of the due-today nudge logic:
+        // they can fire days ahead, and each dated task gets at most one. They spend from the same
+        // notification budget so the total stays under the iOS cap.
+        let alerts = alertRequests(in: context, now: now, calendar: calendar)
+
         let eligible = eligibleTasks(in: context).sorted(by: TaskPrioritizer.isHigherPriority)
 
         // Pair each task with the fire times still ahead of us today, dropping tasks whose reminder
@@ -82,10 +87,10 @@ final class NudgeScheduler {
             .map { (task: $0, slots: futureFireSlots(for: $0, now: now, calendar: calendar)) }
             .filter { !$0.slots.isEmpty }
 
-        guard !candidates.isEmpty else { return [] }
+        guard !candidates.isEmpty else { return alerts }
 
         // If we can't give every task at least one reminder, reserve a slot for the summary.
-        var budget = Self.safeBudget
+        var budget = max(Self.safeBudget - alerts.count, 0)
         let willDropTasks = candidates.count > budget
         if willDropTasks { budget -= 1 }
 
@@ -116,7 +121,52 @@ final class NudgeScheduler {
             requests.append(summaryRequest(droppedCount: dropped.count, fireDate: earliest, calendar: calendar))
         }
 
-        return requests
+        return alerts + requests
+    }
+
+    /// One "before due" alert request per pending dated task whose alert time is still ahead of us.
+    /// Independent of the due-today nudge window, so it can fire days in advance.
+    private func alertRequests(in context: ModelContext,
+                               now: Date,
+                               calendar: Calendar) -> [UNNotificationRequest] {
+        let pendingRaw = TaskStatus.pending.rawValue
+        let descriptor = FetchDescriptor<TaskItem>(
+            predicate: #Predicate { $0.statusRaw == pendingRaw }
+        )
+        let all = (try? context.fetch(descriptor)) ?? []
+
+        return all.compactMap { task in
+            guard !task.isCurrent,
+                  task.dueAlertLeadMinutes != nil,
+                  let fireDate = task.dueAlertFireDate(),
+                  fireDate > now else { return nil }
+            return makeAlertRequest(for: task, fireDate: fireDate, calendar: calendar)
+        }
+    }
+
+    /// The "before due" alert notification for a single task.
+    private func makeAlertRequest(for task: TaskItem,
+                                  fireDate: Date,
+                                  calendar: Calendar) -> UNNotificationRequest {
+        let content = UNMutableNotificationContent()
+        content.title = task.title
+        content.body = alertBody(for: task)
+        content.sound = .default
+
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        let id = "\(Self.idPrefix)alert-\(task.id.uuidString)"
+
+        return UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+    }
+
+    /// Alert body: when the task is actually due.
+    private func alertBody(for task: TaskItem) -> String {
+        guard let due = task.dueDate else { return "Due soon" }
+        let when = task.dueDateHasTime
+            ? due.formatted(date: .abbreviated, time: .shortened)
+            : due.formatted(date: .abbreviated, time: .omitted)
+        return "Due \(when)"
     }
 
     // MARK: - Eligibility
@@ -145,7 +195,7 @@ final class NudgeScheduler {
     private func futureFireSlots(for task: TaskItem,
                                  now: Date,
                                  calendar: Calendar) -> [(index: Int, date: Date)] {
-        NudgeSchedule.fireTimes(for: task.nudgePolicy.intensity).enumerated().compactMap { index, time in
+        NudgeSchedule.fireTimes(for: task.nudgePolicy).enumerated().compactMap { index, time in
             guard let fireDate = calendar.date(bySettingHour: time.hour ?? 0,
                                                minute: time.minute ?? 0,
                                                second: 0,

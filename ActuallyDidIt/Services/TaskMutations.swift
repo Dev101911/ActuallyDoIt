@@ -40,13 +40,13 @@ enum TaskMutations {
     nonisolated static func complete(_ task: TaskItem, in context: ModelContext) {
         task.focusStartedAt = nil
 
-        if let rule = task.recurrenceRule {
-            // Chore: reschedule rather than finish.
-            let base = task.dueDate ?? Date()
-            task.dueDate = rule.nextDate(after: base)
+        if let rule = task.recurrenceRule, let next = rule.nextDate(after: task.dueDate ?? Date()) {
+            // Chore with more occurrences to come: reschedule rather than finish.
+            task.dueDate = next
             task.status = .pending
             task.completedAt = Date()
         } else {
+            // A one-off ToDo, or a chore that has reached its end date: finish it.
             task.status = .completed
             task.completedAt = Date()
         }

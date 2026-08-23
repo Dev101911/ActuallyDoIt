@@ -37,6 +37,14 @@ typealias CurrentSchema = SchemaV1
 
 /// Describes how the store evolves between schema versions. Empty stages today because there is
 /// only one version; each future version adds one stage describing how to reach it.
+///
+/// Note: purely *additive* changes to the current models — including adding optional fields to a
+/// `Codable` value stored on a model, such as `NudgePolicy`'s per-task time override — are migrated
+/// automatically by SwiftData's lightweight inference and do **not** need a new version here. A new
+/// `SchemaVN` + stage is required only for changes lightweight inference can't do on its own
+/// (renames, type changes, deletions, new uniqueness constraints). Bumping the version for an
+/// additive change would in fact fail: two `VersionedSchema`s that describe identical models produce
+/// identical checksums, which a migration plan rejects ("Duplicate version checksums detected").
 enum AppMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
         [SchemaV1.self]

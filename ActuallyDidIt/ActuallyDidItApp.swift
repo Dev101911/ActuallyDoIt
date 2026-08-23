@@ -18,8 +18,12 @@ struct ActuallyDidItApp: App {
     let sharedModelContainer: ModelContainer = ActuallyDidItApp.makeSharedModelContainer()
 
     /// Builds the SwiftData container for the shared App Group store (see `SharedStore`) through the
-    /// versioned `AppMigrationPlan`. The app opens the store *with* CloudKit; the widget extension
-    /// opens the same store without it.
+    /// versioned `AppMigrationPlan`. The app opens the store *with* CloudKit — but only when an
+    /// iCloud account is signed in; the widget extension always opens the same store without it.
+    ///
+    /// Enabling CloudKit mirroring while signed out produces noisy (non-fatal) account-recovery
+    /// logging and no actual sync, so when there's no account we open the store locally and let
+    /// sync resume on the next launch after sign-in.
     ///
     /// If the store can't be opened — almost always a migration that failed after an app update —
     /// we do **not** `fatalError` (that would crash every launch and lock the user out of their
@@ -30,20 +34,26 @@ struct ActuallyDidItApp: App {
         // One-time move of any pre-App-Group store into the shared container.
         SharedStore.relocateLegacyStoreIfNeeded()
 
+        // Only mirror to CloudKit when there's actually an iCloud account to mirror to.
+        let useCloudKit = SharedStore.iCloudAccountAvailable
+
         // In DEBUG, ensure the CloudKit development schema is fully materialised before we open the
-        // syncing store (see `initializeCloudKitSchema`). Best-effort and non-fatal.
+        // syncing store (see `initializeCloudKitSchema`). Best-effort and non-fatal, and pointless
+        // (it just fails and logs) when signed out — so skip it then.
         #if DEBUG
-        initializeCloudKitSchema()
+        if useCloudKit {
+            initializeCloudKitSchema()
+        }
         #endif
 
         do {
-            return try SharedStore.makeContainer(cloudKit: true)
+            return try SharedStore.makeContainer(cloudKit: useCloudKit)
         } catch {
             // Preserve the unreadable store rather than losing it, then start clean.
             backupStoreFiles(at: SharedStore.storeURL, reason: error)
 
             do {
-                return try SharedStore.makeContainer(cloudKit: true)
+                return try SharedStore.makeContainer(cloudKit: useCloudKit)
             } catch {
                 fatalError("Could not create ModelContainer even after preserving the existing store: \(error)")
             }
