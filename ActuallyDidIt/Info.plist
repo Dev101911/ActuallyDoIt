@@ -7,6 +7,11 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.devinharmse.ActuallyDidIt.reconcile</string>
 	</array>
 </dict>
 </plist>

@@ -75,7 +75,9 @@ enum AccentTheme: String, Codable, CaseIterable, Identifiable {
     case indigo
     case pink
     case orange
+    case red
     case green
+    case mono
 
     /// The default used when no preference has been saved yet.
     static let `default`: AccentTheme = .green
@@ -92,7 +94,9 @@ enum AccentTheme: String, Codable, CaseIterable, Identifiable {
         case .indigo: return .indigo
         case .pink: return .pink
         case .orange: return .orange
+        case .red: return .red
         case .green: return .green
+        case .mono: return .primary
         }
     }
 
@@ -103,7 +107,9 @@ enum AccentTheme: String, Codable, CaseIterable, Identifiable {
         case .indigo: return "Indigo"
         case .pink: return "Pink"
         case .orange: return "Orange"
+        case .red: return "Red"
         case .green: return "Green"
+        case .mono: return "Monochrome"
         }
     }
 }

@@ -35,9 +35,18 @@ final class NudgeScheduler {
     /// own set without disturbing notifications scheduled elsewhere.
     private static let idPrefix = "nudge-"
 
-    /// The most reminders we'll ever have pending at once. iOS silently drops anything past 64, so
-    /// we stay comfortably under it and leave headroom for the summary notification.
-    private static let safeBudget = 60
+    /// The most real reminders we'll ever have pending at once. iOS silently drops anything past 64,
+    /// so we budget the cap as: up to 61 reminders (and "before due" alerts), 2 morning digests, and
+    /// the 64th slot reserved for the overflow summary notification.
+    private static let safeBudget = 61
+
+    /// Daily "check your list" digests fire at this time of day (minutes from midnight).
+    private static let digestFireMinutes = 8 * 60 + 30   // 08:30
+
+    /// Digests use their own identifier prefix so they survive the reconcile rebuild (which only
+    /// tears down `idPrefix` requests) — that's what lets us leave an already-scheduled digest in
+    /// place rather than recreating it every foreground.
+    private static let digestIDPrefix = "digest-"
 
     /// Asks the user for permission to post reminders. Safe to call on every launch.
     func requestAuthorization() async {
@@ -52,18 +61,25 @@ final class NudgeScheduler {
     /// Clears everything this scheduler previously scheduled, then re-adds the budgeted set of
     /// reminders for every eligible task.
     func reconcile(in context: ModelContext) {
-        let requests = buildRequests(in: context)
+        Task { await performReconcile(in: context) }
+    }
 
-        Task {
-            await clearOwnedRequests()
-            for request in requests {
-                do {
-                    try await center.add(request)
-                } catch {
-                    logger.error("Failed to schedule nudge: \(error.localizedDescription)")
-                }
+    /// The awaitable reconcile body. Foreground callers use the fire-and-forget `reconcile(in:)`
+    /// above; a background task calls this directly so it can wait for the notification set to
+    /// finish being written before marking itself complete.
+    func performReconcile(in context: ModelContext) async {
+        let requests = buildRequests(in: context)
+        let digests = desiredDigestRequests(in: context, now: Date(), calendar: .current)
+
+        await clearOwnedRequests()
+        for request in requests {
+            do {
+                try await center.add(request)
+            } catch {
+                logger.error("Failed to schedule nudge: \(error.localizedDescription)")
             }
         }
+        await reconcileDigests(desired: digests)
     }
 
     // MARK: - Request planning
@@ -89,10 +105,10 @@ final class NudgeScheduler {
 
         guard !candidates.isEmpty else { return alerts }
 
-        // If we can't give every task at least one reminder, reserve a slot for the summary.
-        var budget = max(Self.safeBudget - alerts.count, 0)
-        let willDropTasks = candidates.count > budget
-        if willDropTasks { budget -= 1 }
+        // Spend the 63-reminder budget on alerts first, then nudges. Any tasks that don't fit are
+        // folded into the overflow summary, which lives in the reserved 64th slot rather than being
+        // carved out of the 63.
+        let budget = max(Self.safeBudget - alerts.count, 0)
 
         let guaranteedCount = min(candidates.count, budget)
         let scheduled = candidates.prefix(guaranteedCount)
@@ -167,6 +183,96 @@ final class NudgeScheduler {
             ? due.formatted(date: .abbreviated, time: .shortened)
             : due.formatted(date: .abbreviated, time: .omitted)
         return "Due \(when)"
+    }
+
+    // MARK: - Morning digests
+
+    /// The two digests we want pending: tomorrow (day+1) and the day after (day+2), each at 08:30.
+    /// These gently prompt the user to reopen the app — which triggers another `reconcile` and keeps
+    /// the rolling notification set fresh — with a brief count of what's due that morning.
+    private func desiredDigestRequests(in context: ModelContext,
+                                       now: Date,
+                                       calendar: Calendar) -> [UNNotificationRequest] {
+        [1, 2].compactMap { dayOffset in
+            guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
+                  let fireDate = calendar.date(bySettingHour: Self.digestFireMinutes / 60,
+                                               minute: Self.digestFireMinutes % 60,
+                                               second: 0,
+                                               of: day) else { return nil }
+            return digestRequest(for: fireDate, in: context, calendar: calendar)
+        }
+    }
+
+    /// A single morning-digest request for the given fire date.
+    private func digestRequest(for fireDate: Date,
+                               in context: ModelContext,
+                               calendar: Calendar) -> UNNotificationRequest {
+        let count = dueCount(on: fireDate, in: context, calendar: calendar)
+
+        let content = UNMutableNotificationContent()
+        content.title = "Good morning"
+        content.body = digestBody(dueCount: count)
+        content.sound = .default
+
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        let id = Self.digestIDPrefix + dayKey(for: fireDate, calendar: calendar)
+
+        return UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+    }
+
+    /// Gentle "look at your list" copy, with a count when there's anything on the plate.
+    private func digestBody(dueCount count: Int) -> String {
+        switch count {
+        case 0: return "Take a look at what's on your list for today."
+        case 1: return "You have 1 task due — take a look at what's on your list for today."
+        default: return "You have \(count) tasks due — take a look at what's on your list for today."
+        }
+    }
+
+    /// How many pending, not-currently-active tasks are due on or before the given day (i.e. due
+    /// that day or already overdue). Computed from the current store snapshot, so recurring chores
+    /// are only counted at their present occurrence — a good-enough hint, not a promise.
+    private func dueCount(on day: Date, in context: ModelContext, calendar: Calendar) -> Int {
+        guard let endOfDay = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: day) else { return 0 }
+        let pendingRaw = TaskStatus.pending.rawValue
+        let descriptor = FetchDescriptor<TaskItem>(
+            predicate: #Predicate { $0.statusRaw == pendingRaw }
+        )
+        let all = (try? context.fetch(descriptor)) ?? []
+        return all.filter { task in
+            guard !task.isCurrent, let due = task.dueDate else { return false }
+            return due <= endOfDay
+        }.count
+    }
+
+    /// A stable per-calendar-day identifier suffix, so a given day's digest keeps the same id across
+    /// reconciles and we can tell whether it's already scheduled.
+    private func dayKey(for date: Date, calendar: Calendar) -> String {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0)
+    }
+
+    /// Ensures exactly the two desired digests are pending: prunes any stale digest that's no longer
+    /// a target (e.g. yesterday's, once a day rolls over) and adds only the targets not already
+    /// scheduled — leaving existing ones untouched so we don't recreate them on every foreground.
+    private func reconcileDigests(desired: [UNNotificationRequest]) async {
+        let pending = await center.pendingNotificationRequests()
+        let pendingIDs = Set(pending.map(\.identifier))
+        let desiredIDs = Set(desired.map(\.identifier))
+
+        let staleIDs = pendingIDs.filter { $0.hasPrefix(Self.digestIDPrefix) && !desiredIDs.contains($0) }
+        if !staleIDs.isEmpty {
+            center.removePendingNotificationRequests(withIdentifiers: Array(staleIDs))
+        }
+
+        for request in desired where !pendingIDs.contains(request.identifier) {
+            do {
+                try await center.add(request)
+            } catch {
+                logger.error("Failed to schedule digest: \(error.localizedDescription)")
+            }
+        }
     }
 
     // MARK: - Eligibility

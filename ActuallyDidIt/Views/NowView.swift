@@ -75,12 +75,13 @@ struct NowView: View {
                             } label: {
                                 Label("Pick for me", systemImage: "dice")
                                     .frame(maxWidth: .infinity)
-                                    // Grey out the label (including the icon) while disabled so
-                                    // it's clear the button isn't tappable when a task is in focus.
-                                    .foregroundStyle(currentTask != nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
+                                    // Keep the dice icon the same white as the title.
+                                    .foregroundStyle(.white)
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(.borderedProminent)
                             .controlSize(.large)
+                            // A disabled `.borderedProminent` button dims automatically, so it's
+                            // clear the button isn't tappable when a task is already in focus.
                             .disabled(currentTask != nil)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -215,6 +216,8 @@ private struct EmptyNowView: View {
                 Button(action: onPickForMe) {
                     Label("Pick for me", systemImage: "dice")
                         .frame(maxWidth: .infinity)
+                        // Keep the dice icon the same white as the title.
+                        .foregroundStyle(.white)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)

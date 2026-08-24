@@ -17,6 +17,12 @@ struct ActuallyDidItApp: App {
 
     let sharedModelContainer: ModelContainer = ActuallyDidItApp.makeSharedModelContainer()
 
+    init() {
+        // Register the background reconcile handler before the app finishes launching, as
+        // BGTaskScheduler requires. The request itself is submitted from the scene lifecycle below.
+        BackgroundReconcile.register(container: sharedModelContainer)
+    }
+
     /// Builds the SwiftData container for the shared App Group store (see `SharedStore`) through the
     /// versioned `AppMigrationPlan`. The app opens the store *with* CloudKit — but only when an
     /// iCloud account is signed in; the widget extension always opens the same store without it.
@@ -148,16 +154,27 @@ struct ActuallyDidItApp: App {
                     // Ask for notification permission, then (re)schedule today's nudges.
                     await NudgeScheduler.shared.requestAuthorization()
                     NudgeScheduler.shared.reconcile(in: sharedModelContainer.mainContext)
+
+                    // Ensure a background reconcile is queued even if the app is killed straight
+                    // from the foreground without ever entering the background.
+                    BackgroundReconcile.schedule()
                 }
                 .tint(accentTheme.color)
                 .background(AppearanceStyleSetter(style: appearanceTheme.uiStyle))
                 .onChange(of: scenePhase) { _, newPhase in
-                    // Coming back to the foreground: a task may have been started or completed
-                    // from the widget while we were backgrounded. Re-sync the Live Activity and
-                    // nudges with the (possibly changed) store state.
-                    guard newPhase == .active else { return }
-                    FocusActivityController.shared.restore(in: sharedModelContainer.mainContext)
-                    NudgeScheduler.shared.reconcile(in: sharedModelContainer.mainContext)
+                    switch newPhase {
+                    case .active:
+                        // Coming back to the foreground: a task may have been started or completed
+                        // from the widget while we were backgrounded. Re-sync the Live Activity and
+                        // nudges with the (possibly changed) store state.
+                        FocusActivityController.shared.restore(in: sharedModelContainer.mainContext)
+                        NudgeScheduler.shared.reconcile(in: sharedModelContainer.mainContext)
+                    case .background:
+                        // Leaving the foreground: queue the next opportunistic background reconcile.
+                        BackgroundReconcile.schedule()
+                    default:
+                        break
+                    }
                 }
         }
         .modelContainer(sharedModelContainer)
