@@ -17,6 +17,11 @@ struct ActuallyDidItApp: App {
 
     let sharedModelContainer: ModelContainer = ActuallyDidItApp.makeSharedModelContainer()
 
+    /// Routes notification taps to the matching task. Created here (not lazily) so it becomes the
+    /// notification-center delegate before the app finishes launching, as UserNotifications requires
+    /// to catch a tap that cold-launches the app.
+    private let notificationRouter = NotificationRouter()
+
     init() {
         // Register the background reconcile handler before the app finishes launching, as
         // BGTaskScheduler requires. The request itself is submitted from the scene lifecycle below.
@@ -159,6 +164,7 @@ struct ActuallyDidItApp: App {
                     // from the foreground without ever entering the background.
                     BackgroundReconcile.schedule()
                 }
+                .environment(notificationRouter)
                 .tint(accentTheme.color)
                 .background(AppearanceStyleSetter(style: appearanceTheme.uiStyle))
                 .onChange(of: scenePhase) { _, newPhase in

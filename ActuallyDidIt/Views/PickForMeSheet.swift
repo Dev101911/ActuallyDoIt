@@ -57,14 +57,9 @@ struct PickForMeSheet: View {
 
             VStack(spacing: 12) {
                 ForEach(timeOptions, id: \.self) { minutes in
-                    Button {
+                    StandardButton("\(minutes) minutes", role: .primary) {
                         choose(minutes)
-                    } label: {
-                        Text("\(minutes) minutes")
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
                 }
             }
             Spacer()
@@ -84,11 +79,9 @@ struct PickForMeSheet: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Spacer()
-            Button("Try a different time") {
+            StandardButton("Try a different time", role: .secondary) {
                 noMatchMinutes = nil
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
         }
     }
 

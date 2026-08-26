@@ -37,6 +37,11 @@ enum TaskActions {
     static func complete(_ task: TaskItem, in context: ModelContext) {
         TaskMutations.complete(task, in: context)
         FocusActivityController.shared.reconcile(in: context)
+        // Cancel this task's pending notifications immediately, then reconcile the rest. The
+        // targeted cancel guarantees a completed task stops nudging even if the async reconcile
+        // doesn't finish before the app is suspended; a re-armed chore's future occurrence is
+        // re-scheduled by the reconcile that follows.
+        NudgeScheduler.shared.cancelNotifications(for: task)
         NudgeScheduler.shared.reconcile(in: context)
         persistAndReloadWidgets(context)
     }
@@ -61,6 +66,10 @@ enum TaskActions {
     /// Deletes a task. Routed through here (rather than calling `context.delete` directly) so
     /// that removing the currently focused task also ends its Live Activity.
     static func delete(_ task: TaskItem, in context: ModelContext) {
+        // Cancel the task's notifications before deleting it, while its id and nudge policy are
+        // still safe to read, so its reminders are torn down even if the async reconcile below
+        // doesn't run to completion.
+        NudgeScheduler.shared.cancelNotifications(for: task)
         context.delete(task)
         FocusActivityController.shared.reconcile(in: context)
         NudgeScheduler.shared.reconcile(in: context)

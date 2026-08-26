@@ -112,15 +112,10 @@ struct TaskDetailView: View {
 
                 if !task.isCurrent {
                     Section {
-                        Button {
+                        StandardButton("Set as doing now", role: .secondary) {
                             TaskActions.promoteToCurrent(task, in: modelContext)
                             dismiss()
-                        } label: {
-                            Text("Set as doing now")
-                                .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets())
                     }

@@ -12,6 +12,7 @@ import SwiftData
 
 struct NowView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(NotificationRouter.self) private var notificationRouter
 
     @Query private var allTasks: [TaskItem]
 
@@ -22,6 +23,8 @@ struct NowView: View {
     @State private var showingPickForMe = false
     @State private var showingSettings = false
     @State private var showingTutorial = false
+    /// The task to open, set when the user taps a task's notification.
+    @State private var routedTask: TaskItem?
 
     private var currentTask: TaskItem? {
         allTasks.first { $0.isCurrent }
@@ -70,18 +73,11 @@ struct NowView: View {
 
                         // Pick for me is only for choosing a focus — disabled while one is set.
                         Section {
-                            Button {
+                            StandardButton("Pick for me", systemImage: "dice", role: .secondary) {
                                 showingPickForMe = true
-                            } label: {
-                                Label("Pick for me", systemImage: "dice")
-                                    .frame(maxWidth: .infinity)
-                                    // Keep the dice icon the same white as the title.
-                                    .foregroundStyle(.white)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.large)
-                            // A disabled `.borderedProminent` button dims automatically, so it's
-                            // clear the button isn't tappable when a task is already in focus.
+                            // The secondary style dims when disabled, so it's clear the button
+                            // isn't tappable when a task is already in focus.
                             .disabled(currentTask != nil)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -120,12 +116,30 @@ struct NowView: View {
             .sheet(isPresented: $showingAdd) { AddEditTaskView().interactiveDismissDisabled() }
             .sheet(isPresented: $showingPickForMe) { PickForMeSheet().interactiveDismissDisabled() }
             .sheet(isPresented: $showingSettings) { SettingsView().interactiveDismissDisabled() }
+            .sheet(item: $routedTask) { task in
+                TaskDetailView(task: task).interactiveDismissDisabled()
+            }
             .fullScreenCover(isPresented: $showingTutorial) { TutorialView() }
             .task {
                 // Auto-present the tour once, on first launch.
                 if !hasSeenTutorial { showingTutorial = true }
             }
+            // Open the tapped task's detail. Handle both an id set before the view appeared (a
+            // notification that cold-launched the app) and later taps while it's on screen.
+            .task { openRoutedTask(notificationRouter.selectedTaskID) }
+            .onChange(of: notificationRouter.selectedTaskID) { _, id in
+                openRoutedTask(id)
+            }
         }
+    }
+
+    /// Presents the detail view for the task matching `id`, then clears the router so the same task
+    /// can be reopened by a later tap. Does nothing if the task no longer exists (e.g. completed or
+    /// deleted since the notification fired).
+    private func openRoutedTask(_ id: UUID?) {
+        guard let id, let task = allTasks.first(where: { $0.id == id }) else { return }
+        routedTask = task
+        notificationRouter.selectedTaskID = nil
     }
 }
 
@@ -156,14 +170,9 @@ private struct DoingNowSection: View {
                     .foregroundStyle(.secondary)
             }
 
-            Button {
+            StandardButton("Done", role: .primary) {
                 TaskActions.complete(task, in: modelContext)
-            } label: {
-                Text("Done")
-                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .padding(.top, 4)
 
             // Demoted to a quiet text button so "Done" is unambiguously the primary action.
@@ -213,21 +222,8 @@ private struct EmptyNowView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                Button(action: onPickForMe) {
-                    Label("Pick for me", systemImage: "dice")
-                        .frame(maxWidth: .infinity)
-                        // Keep the dice icon the same white as the title.
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-
-                Button(action: onBrowse) {
-                    Label("Choose a task", systemImage: "list.bullet")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                StandardButton("Pick for me", systemImage: "dice", role: .secondary, action: onPickForMe)
+                StandardButton("Choose a task", systemImage: "list.bullet", role: .secondary, action: onBrowse)
             }
         }
     }
@@ -236,4 +232,5 @@ private struct EmptyNowView: View {
 #Preview {
     NowView()
         .modelContainer(SampleData.previewContainer)
+        .environment(NotificationRouter())
 }

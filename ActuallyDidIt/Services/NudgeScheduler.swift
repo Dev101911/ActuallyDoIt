@@ -168,6 +168,7 @@ final class NudgeScheduler {
         content.title = task.title
         content.body = alertBody(for: task)
         content.sound = .default
+        content.userInfo = [NotificationRouter.taskIDKey: task.id.uuidString]
 
         let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
@@ -320,6 +321,7 @@ final class NudgeScheduler {
         content.title = task.title
         content.body = nudgeBody(for: task)
         content.sound = .default
+        content.userInfo = [NotificationRouter.taskIDKey: task.id.uuidString]
 
         let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
@@ -347,6 +349,25 @@ final class NudgeScheduler {
     /// Reminder body: the task's surfacing reason and estimate.
     private func nudgeBody(for task: TaskItem) -> String {
         "\(task.surfacingReason) · \(task.estimatedTimeLabel)"
+    }
+
+    /// Immediately cancels every notification this scheduler owns for a single task — its
+    /// reminders and its "before due" alert — both those still pending *and* any that have already
+    /// fired and are sitting in Notification Center.
+    ///
+    /// This is the targeted counterpart to `reconcile`: because the notification identifiers are
+    /// deterministic (derived from the task id and its nudge policy) it needs no async fetch and
+    /// takes effect at once. That matters when a task is completed or deleted right before the app
+    /// is suspended, when the fire-and-forget `reconcile` rebuild might not get to run — the task
+    /// stops nudging regardless. Clearing the delivered copies also pulls stale alerts out of the
+    /// pull-down shade so a finished task doesn't keep showing there.
+    func cancelNotifications(for task: TaskItem) {
+        let id = task.id.uuidString
+        var identifiers = ["\(Self.idPrefix)alert-\(id)"]
+        let slotCount = NudgeSchedule.fireTimes(for: task.nudgePolicy).count
+        identifiers += (0..<slotCount).map { "\(Self.idPrefix)\(id)-\($0)" }
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
     }
 
     /// Removes only the pending requests this scheduler owns.

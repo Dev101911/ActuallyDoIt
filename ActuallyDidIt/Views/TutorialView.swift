@@ -44,15 +44,9 @@ struct TutorialView: View {
             PageIndicator(count: steps.count, current: selection)
                 .padding(.vertical, 20)
 
-            Button(action: advance) {
-                Text(isLastStep ? "Get started" : "Continue")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .padding(.horizontal, 28)
-            .padding(.bottom, 24)
+            StandardButton(isLastStep ? "Get started" : "Continue", role: .primary, action: advance)
+                .padding(.horizontal, 28)
+                .padding(.bottom, 24)
         }
     }
 
