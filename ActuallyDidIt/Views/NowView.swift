@@ -30,13 +30,38 @@ struct NowView: View {
         allTasks.first { $0.isCurrent }
     }
 
+    /// Overdue + due-today actionable tasks — the time-critical "Today" group.
+    private var dueToday: [TaskItem] {
+        TaskPrioritizer.dueToday(from: allTasks)
+    }
+
+    /// Forward-looking preview, excluding anything already shown under "Today".
     private var upNext: [TaskItem] {
-        TaskPrioritizer.upNext(from: allTasks, limit: 3)
+        TaskPrioritizer.upNext(from: allTasks, excludingIDs: Set(dueToday.map(\.id)), limit: 3)
             .sorted(by: TaskItem.byOverdueThenDueDate)
     }
 
+    /// Every task due today or earlier (overdue + today), regardless of status — powers the
+    /// day-progress ring so it reflects all outstanding and completed work for today.
+    private var todayScheduled: [TaskItem] {
+        let todayStart = Calendar.current.startOfDay(for: Date())
+        return allTasks.filter { task in
+            guard let due = task.dueDate else { return false }
+            return Calendar.current.startOfDay(for: due) <= todayStart
+        }
+    }
+
+    private var todayDoneCount: Int {
+        todayScheduled.filter { $0.status == .completed }.count
+    }
+
+    /// Whether to show the Today section at all: something pending, or everything done today.
+    private var showTodaySection: Bool {
+        !dueToday.isEmpty || !todayScheduled.isEmpty
+    }
+
     private var isEmpty: Bool {
-        currentTask == nil && upNext.isEmpty
+        currentTask == nil && dueToday.isEmpty && upNext.isEmpty && todayScheduled.isEmpty
     }
 
     var body: some View {
@@ -61,6 +86,29 @@ struct NowView: View {
                             }
                         }
 
+                        if showTodaySection {
+                            Section {
+                                if dueToday.isEmpty {
+                                    // Everything due today is done — a quiet win, not empty rows.
+                                    Label("All done for today", systemImage: "checkmark.circle.fill")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    ForEach(dueToday) { task in
+                                        TaskListRow(task: task)
+                                    }
+                                }
+                            } header: {
+                                HStack {
+                                    Text("Today")
+                                    Spacer()
+                                    if !todayScheduled.isEmpty {
+                                        DayProgressBadge(done: todayDoneCount, total: todayScheduled.count)
+                                    }
+                                }
+                            }
+                        }
+
                         if !upNext.isEmpty {
                             Section {
                                 ForEach(upNext) { task in
@@ -69,19 +117,6 @@ struct NowView: View {
                             } header: {
                                 Text(currentTask != nil ? "Up next" : "Suggested next")
                             }
-                        }
-
-                        // Pick for me is only for choosing a focus — disabled while one is set.
-                        Section {
-                            StandardButton("Pick for me", systemImage: "dice", role: .secondary) {
-                                showingPickForMe = true
-                            }
-                            // The secondary style dims when disabled, so it's clear the button
-                            // isn't tappable when a task is already in focus.
-                            .disabled(currentTask != nil)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets())
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -103,6 +138,16 @@ struct NowView: View {
                     } label: {
                         Label("All tasks", systemImage: "list.bullet")
                     }
+                }
+                // Pick for me lives quietly in the toolbar now — only for choosing a focus, so it's
+                // disabled while one is already set.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingPickForMe = true
+                    } label: {
+                        Label("Pick for me", systemImage: "dice")
+                    }
+                    .disabled(currentTask != nil)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -192,6 +237,41 @@ private struct DoingNowSection: View {
             RoundedRectangle(cornerRadius: 20)
                 .strokeBorder(accentTheme.color.opacity(0.20), lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Today progress
+
+/// A compact "done / total" ring for the tasks scheduled today, shown in the Today section header.
+/// Glanceable day-load without competing with the "Doing now" hero.
+private struct DayProgressBadge: View {
+    @AppStorage(AccentTheme.storageKey) private var accentTheme = AccentTheme.default
+    let done: Int
+    let total: Int
+
+    private var fraction: Double {
+        total > 0 ? Double(done) / Double(total) : 0
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("\(done)/\(total)")
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .foregroundStyle(.secondary)
+
+            ZStack {
+                Circle()
+                    .stroke(accentTheme.color.opacity(0.20), lineWidth: 3)
+                Circle()
+                    .trim(from: 0, to: fraction)
+                    .stroke(accentTheme.color, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+            .frame(width: 16, height: 16)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Today's progress")
+        .accessibilityValue("\(done) of \(total) done")
     }
 }
 

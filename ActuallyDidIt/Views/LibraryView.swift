@@ -190,12 +190,23 @@ struct TaskRowView: View {
         return parts.joined(separator: " · ")
     }
 
+    private var isPaused: Bool { !isCompleted && task.isPaused }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(task.title)
-                .font(.body.weight(.medium))
-                .strikethrough(isCompleted)
-                .foregroundStyle(isCompleted ? .secondary : .primary)
+            HStack(spacing: 6) {
+                Text(task.title)
+                    .font(.body.weight(.medium))
+                    .strikethrough(isCompleted)
+                    .foregroundStyle(isCompleted || isPaused ? .secondary : .primary)
+
+                if isPaused {
+                    Image(systemName: "pause.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Paused")
+                }
+            }
 
             if isCompleted {
                 if let completedAt = task.completedAt {
@@ -203,6 +214,10 @@ struct TaskRowView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            } else if let pausedLabel = task.pausedUntilLabel {
+                Text(pausedLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } else if task.isOverdue {
                 Text("Overdue · \(metadata)")
                     .font(.caption)

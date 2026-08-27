@@ -46,6 +46,23 @@ enum TaskActions {
         persistAndReloadWidgets(context)
     }
 
+    /// Pauses a Chore until `date` — used for holidays. Cancels its pending reminders at once (like
+    /// completing does) then reconciles the rest, so a paused chore stops nudging immediately.
+    static func pause(_ task: TaskItem, until date: Date, in context: ModelContext) {
+        TaskMutations.pause(task, until: date, in: context)
+        FocusActivityController.shared.reconcile(in: context)
+        NudgeScheduler.shared.cancelNotifications(for: task)
+        NudgeScheduler.shared.reconcile(in: context)
+        persistAndReloadWidgets(context)
+    }
+
+    /// Resumes a paused Chore, bringing it back into the active list and rescheduling its nudges.
+    static func resume(_ task: TaskItem, in context: ModelContext) {
+        TaskMutations.resume(task, in: context)
+        NudgeScheduler.shared.reconcile(in: context)
+        persistAndReloadWidgets(context)
+    }
+
     /// Reopens a completed task, moving it back to the pending pool.
     static func markUnfinished(_ task: TaskItem, in context: ModelContext) {
         task.status = .pending

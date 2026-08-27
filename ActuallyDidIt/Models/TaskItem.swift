@@ -33,6 +33,11 @@ final class TaskItem {
     /// cleanly.
     var dueAlertLeadMinutes: Int?
 
+    /// When set to a future date the task (a **Chore**) is *paused* — e.g. while you're on holiday.
+    /// A paused chore drops out of the actionable pool and stops nudging until this date passes.
+    /// Additive optional scalar so existing rows migrate cleanly; only meaningful for chores.
+    var pausedUntil: Date?
+
     // Nudge engine state
     var nudgePolicy: NudgePolicy = NudgePolicy.default
     var lastNudgedAt: Date?
@@ -87,6 +92,18 @@ extension TaskItem {
     /// A recurring Chore vs. a one-off ToDo.
     var isChore: Bool { recurrenceRule != nil }
 
+    /// Whether the chore is currently paused — its resume date is still in the future.
+    var isPaused: Bool {
+        guard let pausedUntil else { return false }
+        return pausedUntil > Date()
+    }
+
+    /// A short "Paused until 30 Aug" label while paused, or `nil` otherwise.
+    var pausedUntilLabel: String? {
+        guard isPaused, let pausedUntil else { return nil }
+        return "Paused until \(pausedUntil.formatted(date: .abbreviated, time: .omitted))"
+    }
+
     /// Whether this task's due date carries a specific time of day, as opposed to being pinned to
     /// the start of the day. Alerts are interpreted in minutes for timed due dates and in whole
     /// days for date-only ones.
@@ -114,15 +131,16 @@ extension TaskItem {
     /// Whether the task is currently the user's single focus.
     var isCurrent: Bool { focusStartedAt != nil }
 
-    /// True when the task is available to be worked on / suggested right now.
+    /// True when the task is available to be worked on / suggested right now. A paused chore is
+    /// deliberately unavailable until its pause ends.
     var isActionable: Bool {
-        status == .pending
+        status == .pending && !isPaused
     }
 
     /// True when a pending task's due date has already passed (before today).
-    /// A task due *today* counts as "due today", not overdue.
+    /// A task due *today* counts as "due today", not overdue. Paused chores are never overdue.
     var isOverdue: Bool {
-        guard status == .pending, let dueDate else { return false }
+        guard status == .pending, !isPaused, let dueDate else { return false }
         return dueDate < Calendar.current.startOfDay(for: Date())
     }
 

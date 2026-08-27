@@ -85,4 +85,94 @@ struct TaskMutationsTests {
         let expectedNext = Calendar.current.date(byAdding: .day, value: 3, to: start)
         #expect(chore.dueDate == expectedNext)
     }
+
+    @Test("pause marks a Chore paused and drops focus")
+    func pauseMarksChorePaused() throws {
+        let context = try makeContext()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let resume = calendar.date(byAdding: .day, value: 7, to: today)!
+        let chore = TaskItem(title: "Vacuum",
+                             dueDate: today,
+                             recurrenceRule: RecurrenceRule(frequency: .weekly, interval: 1))
+        context.insert(chore)
+        TaskMutations.setCurrent(chore, in: context)
+
+        TaskMutations.pause(chore, until: resume, in: context)
+
+        #expect(chore.isPaused)
+        #expect(!chore.isCurrent, "Pausing drops the chore out of focus")
+        #expect(!chore.isActionable, "A paused chore is not actionable")
+    }
+
+    @Test("pause rolls a due-during-pause chore forward to the resume day")
+    func pauseRollsDueForward() throws {
+        let context = try makeContext()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let resume = calendar.date(byAdding: .day, value: 7, to: today)!
+        // Due today — during the pause window — so it should be pushed to the resume day.
+        let chore = TaskItem(title: "Vacuum",
+                             dueDate: today,
+                             recurrenceRule: RecurrenceRule(frequency: .daily, interval: 1))
+        context.insert(chore)
+
+        TaskMutations.pause(chore, until: resume, in: context)
+
+        #expect(chore.dueDate == resume, "The next occurrence lands on the resume day")
+    }
+
+    @Test("pause leaves an already-later due date untouched")
+    func pauseKeepsLaterDueDate() throws {
+        let context = try makeContext()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let resume = calendar.date(byAdding: .day, value: 3, to: today)!
+        let laterDue = calendar.date(byAdding: .day, value: 10, to: today)!
+        let chore = TaskItem(title: "Vacuum",
+                             dueDate: laterDue,
+                             recurrenceRule: RecurrenceRule(frequency: .weekly, interval: 1))
+        context.insert(chore)
+
+        TaskMutations.pause(chore, until: resume, in: context)
+
+        #expect(chore.dueDate == laterDue, "A due date already past the pause is left alone")
+    }
+
+    @Test("resume clears the pause and re-anchors the due date to today")
+    func resumeClearsPause() throws {
+        let context = try makeContext()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let resume = calendar.date(byAdding: .day, value: 7, to: today)!
+        let chore = TaskItem(title: "Vacuum",
+                             dueDate: today,
+                             recurrenceRule: RecurrenceRule(frequency: .daily, interval: 1))
+        context.insert(chore)
+        TaskMutations.pause(chore, until: resume, in: context)
+
+        TaskMutations.resume(chore, in: context)
+
+        #expect(!chore.isPaused)
+        #expect(chore.isActionable)
+        #expect(chore.dueDate == today, "Resuming a daily chore brings it back due today")
+    }
+
+    @Test("completing a paused Chore clears the pause")
+    func completeClearsPause() throws {
+        let context = try makeContext()
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let resume = calendar.date(byAdding: .day, value: 7, to: today)!
+        let chore = TaskItem(title: "Vacuum",
+                             dueDate: today,
+                             recurrenceRule: RecurrenceRule(frequency: .weekly, interval: 1))
+        context.insert(chore)
+        TaskMutations.pause(chore, until: resume, in: context)
+
+        TaskMutations.complete(chore, in: context)
+
+        #expect(chore.pausedUntil == nil)
+        #expect(!chore.isPaused)
+    }
 }

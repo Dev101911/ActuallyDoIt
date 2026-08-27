@@ -10,10 +10,23 @@ import Foundation
 
 enum TaskPrioritizer {
 
-    /// The top actionable tasks to preview, ranked by urgency. Excludes the current task.
-    static func upNext(from tasks: [TaskItem], limit: Int = 3) -> [TaskItem] {
+    /// The overdue and due-today actionable tasks — the time-critical group shown under "Today".
+    /// Overdue tasks sort first, then soonest due. Excludes the current task.
+    static func dueToday(from tasks: [TaskItem], now: Date = Date()) -> [TaskItem] {
+        let calendar = Calendar.current
+        return tasks
+            .filter { task in
+                guard task.isActionable, !task.isCurrent, let due = task.dueDate else { return false }
+                return task.isOverdue || calendar.isDate(due, inSameDayAs: now)
+            }
+            .sorted(by: TaskItem.byOverdueThenDueDate)
+    }
+
+    /// The top actionable tasks to preview, ranked by urgency. Excludes the current task and any
+    /// tasks in `excludingIDs` (used to keep "Up next" from repeating what's already under "Today").
+    static func upNext(from tasks: [TaskItem], excludingIDs: Set<UUID> = [], limit: Int = 3) -> [TaskItem] {
         tasks
-            .filter { $0.isActionable && !$0.isCurrent }
+            .filter { $0.isActionable && !$0.isCurrent && !excludingIDs.contains($0.id) }
             .sorted(by: isHigherPriority)
             .prefix(limit)
             .map { $0 }

@@ -65,6 +65,29 @@ enum NudgeIntensity: String, Codable, CaseIterable {
     }
 }
 
+/// A preset "how long am I away" option for pausing a Chore, and the resume date it produces.
+/// Used by the Pause controls in the task detail view and the row overflow menu.
+struct PauseDuration: Identifiable {
+    let label: String
+    private let component: Calendar.Component
+    private let value: Int
+
+    var id: String { label }
+
+    /// The date the chore should come back, pinned to the start of that day.
+    func resumeDate(from reference: Date = Date()) -> Date {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: reference)
+        return calendar.date(byAdding: component, value: value, to: start) ?? reference
+    }
+
+    static let presets: [PauseDuration] = [
+        PauseDuration(label: "1 week", component: .weekOfYear, value: 1),
+        PauseDuration(label: "2 weeks", component: .weekOfYear, value: 2),
+        PauseDuration(label: "1 month", component: .month, value: 1)
+    ]
+}
+
 /// A user-selectable accent colour for the app. Backed by `String` so it stores directly in
 /// `@AppStorage`, and limited to a curated set of presets to match the app's minimal feel.
 /// This is the single source of truth behind both the app-wide `.tint` and the "Doing now"

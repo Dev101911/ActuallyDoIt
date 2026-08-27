@@ -88,6 +88,8 @@ struct TaskDetailView: View {
                     Section("Chore (recurring)") {
                         LabeledContent("Repeats", value: rule.summary)
                     }
+
+                    PauseChoreSection(task: task)
                 }
 
                 if !task.isChore, let dueDate = task.dueDate {
@@ -134,6 +136,69 @@ struct TaskDetailView: View {
             .sheet(item: $editingTask) { task in
                 AddEditTaskView(task: task)
                     .interactiveDismissDisabled()
+            }
+        }
+    }
+}
+
+// MARK: - Pause
+
+/// The Pause controls shown for a Chore in the detail view: the current paused status when paused,
+/// or quick "how long are you away" durations plus a custom resume date when it isn't.
+private struct PauseChoreSection: View {
+    @Environment(\.modelContext) private var modelContext
+    let task: TaskItem
+
+    /// The custom resume date, defaulting to a week out at the start of that day.
+    @State private var customResumeDate = Calendar.current.date(
+        byAdding: .day, value: 7, to: Calendar.current.startOfDay(for: Date())
+    ) ?? Date()
+
+    /// The earliest a chore may resume — tomorrow.
+    private var earliestResume: Date {
+        Calendar.current.date(byAdding: .day, value: 1,
+                              to: Calendar.current.startOfDay(for: Date())) ?? Date()
+    }
+
+    var body: some View {
+        if task.isPaused, let pausedUntil = task.pausedUntil {
+            Section("Paused") {
+                Label {
+                    Text("Resumes \(pausedUntil.formatted(date: .abbreviated, time: .omitted))")
+                } icon: {
+                    Image(systemName: "pause.circle.fill")
+                }
+                .foregroundStyle(.secondary)
+
+                StandardButton("Resume now", role: .secondary) {
+                    TaskActions.resume(task, in: modelContext)
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
+        } else {
+            Section {
+                ForEach(PauseDuration.presets) { preset in
+                    Button {
+                        TaskActions.pause(task, until: preset.resumeDate(), in: modelContext)
+                    } label: {
+                        Label("Pause for \(preset.label)", systemImage: "pause.circle")
+                    }
+                }
+
+                DatePicker("Resume on", selection: $customResumeDate,
+                           in: earliestResume..., displayedComponents: .date)
+                Button {
+                    TaskActions.pause(task,
+                                      until: Calendar.current.startOfDay(for: customResumeDate),
+                                      in: modelContext)
+                } label: {
+                    Label("Pause until this date", systemImage: "pause.circle")
+                }
+            } header: {
+                Text("Pause")
+            } footer: {
+                Text("Pauses reminders while you're away — for example, on holiday. The chore returns on the day you choose.")
             }
         }
     }

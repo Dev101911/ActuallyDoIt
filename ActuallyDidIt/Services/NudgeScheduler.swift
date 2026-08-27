@@ -153,6 +153,7 @@ final class NudgeScheduler {
 
         return all.compactMap { task in
             guard !task.isCurrent,
+                  !task.isPaused,
                   task.dueAlertLeadMinutes != nil,
                   let fireDate = task.dueAlertFireDate(),
                   fireDate > now else { return nil }
@@ -242,7 +243,7 @@ final class NudgeScheduler {
         )
         let all = (try? context.fetch(descriptor)) ?? []
         return all.filter { task in
-            guard !task.isCurrent, let due = task.dueDate else { return false }
+            guard !task.isCurrent, !task.isPaused, let due = task.dueDate else { return false }
             return due <= endOfDay
         }.count
     }
@@ -290,6 +291,7 @@ final class NudgeScheduler {
 
         return all.filter { task in
             guard !task.isCurrent else { return false }               // actively being done
+            guard !task.isPaused else { return false }                 // paused chore (e.g. holiday)
             guard let due = task.dueDate else { return false }         // only dated tasks nudge
             return calendar.isDateInToday(due) || due < now            // due today or overdue
         }

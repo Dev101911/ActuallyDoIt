@@ -93,6 +93,15 @@ enum SampleData {
             nudgePolicy: NudgePolicy(intensity: .relentless)
         )
 
+        // A chore paused while away (e.g. on holiday), to show the paused state.
+        let vacuum = TaskItem(
+            title: "Vacuum the flat",
+            estimatedMinutes: 20,
+            dueDate: day(9),
+            recurrenceRule: RecurrenceRule(frequency: .weekly, interval: 1)
+        )
+        vacuum.pausedUntil = day(9)
+
         // MARK: Already-completed ToDos (populate the Completed section)
         let paidBill = TaskItem(
             title: "Pay the electricity bill",
@@ -110,7 +119,7 @@ enum SampleData {
 
         return [
             emailLandlord, bookDentist, renewPassport, quickTidyInbox, readChapter,
-            bigDeepClean, bins, waterPlants, dishes, payRent,
+            bigDeepClean, bins, waterPlants, dishes, payRent, vacuum,
             paidBill, calledMum
         ]
     }

@@ -121,6 +121,25 @@ struct TaskListRow: View {
             } label: {
                 Label("Mark as done", systemImage: "checkmark.circle")
             }
+            if task.isChore {
+                if task.isPaused {
+                    Button {
+                        TaskActions.resume(task, in: modelContext)
+                    } label: {
+                        Label("Resume chore", systemImage: "play.circle")
+                    }
+                } else {
+                    Menu {
+                        ForEach(PauseDuration.presets) { preset in
+                            Button(preset.label) {
+                                TaskActions.pause(task, until: preset.resumeDate(), in: modelContext)
+                            }
+                        }
+                    } label: {
+                        Label("Pause chore", systemImage: "pause.circle")
+                    }
+                }
+            }
             Button {
                 editingTask = task
             } label: {
