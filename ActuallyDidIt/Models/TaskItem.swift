@@ -144,6 +144,13 @@ extension TaskItem {
         return dueDate < Calendar.current.startOfDay(for: Date())
     }
 
+    /// True when the task's occurrence is due today or already overdue. Used to keep chores from
+    /// surfacing before their occurrence is actually due (a weekly chore shouldn't appear all week).
+    var isDueTodayOrOverdue: Bool {
+        guard let dueDate else { return false }
+        return isOverdue || Calendar.current.isDateInToday(dueDate)
+    }
+
     /// A short reason string explaining why a task is being surfaced.
     var surfacingReason: String {
         if let dueDate {

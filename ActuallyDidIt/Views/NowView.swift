@@ -55,6 +55,19 @@ struct NowView: View {
         todayScheduled.filter { $0.status == .completed }.count
     }
 
+    /// Everything finished today — a "look what you got done" recap at the bottom of Now,
+    /// newest first. Includes finished chores: completing a chore re-arms it to `.pending` for its
+    /// next occurrence but keeps `completedAt` set, so it still counts as done for today.
+    private var completedToday: [TaskItem] {
+        allTasks
+            .filter { task in
+                guard let completedAt = task.completedAt,
+                      Calendar.current.isDateInToday(completedAt) else { return false }
+                return task.status == .completed || task.isChore
+            }
+            .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
+    }
+
     /// Whether to show the Today section at all: something pending, or everything done today.
     private var showTodaySection: Bool {
         !dueToday.isEmpty || !todayScheduled.isEmpty
@@ -62,6 +75,7 @@ struct NowView: View {
 
     private var isEmpty: Bool {
         currentTask == nil && dueToday.isEmpty && upNext.isEmpty && todayScheduled.isEmpty
+            && completedToday.isEmpty
     }
 
     var body: some View {
@@ -118,6 +132,16 @@ struct NowView: View {
                                 Text(currentTask != nil ? "Up next" : "Suggested next")
                             }
                         }
+
+                        if !completedToday.isEmpty {
+                            Section {
+                                ForEach(completedToday) { task in
+                                    CompletedTaskRow(task: task)
+                                }
+                            } header: {
+                                Text("Completed today")
+                            }
+                        }
                     }
                     .listStyle(.insetGrouped)
                 }
@@ -162,7 +186,7 @@ struct NowView: View {
             .sheet(isPresented: $showingPickForMe) { PickForMeSheet().interactiveDismissDisabled() }
             .sheet(isPresented: $showingSettings) { SettingsView().interactiveDismissDisabled() }
             .sheet(item: $routedTask) { task in
-                TaskDetailView(task: task).interactiveDismissDisabled()
+                TaskDetailView(task: task)
             }
             .fullScreenCover(isPresented: $showingTutorial) { TutorialView() }
             .task {
@@ -237,6 +261,25 @@ private struct DoingNowSection: View {
             RoundedRectangle(cornerRadius: 20)
                 .strokeBorder(accentTheme.color.opacity(0.20), lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Completed today
+
+/// A recap row for a task finished today: a checked box (tap to reopen) and the struck-through
+/// title. Mirrors the Library's completed rows so the checkbox behaves consistently everywhere.
+private struct CompletedTaskRow: View {
+    @Environment(\.modelContext) private var modelContext
+    let task: TaskItem
+
+    var body: some View {
+        HStack(spacing: 8) {
+            TaskCheckbox(isChecked: true) {
+                TaskActions.markUnfinished(task, in: modelContext)
+            }
+            TaskRowView(task: task, isCompleted: true)
+            Spacer(minLength: 0)
+        }
     }
 }
 

@@ -26,7 +26,15 @@ enum TaskPrioritizer {
     /// tasks in `excludingIDs` (used to keep "Up next" from repeating what's already under "Today").
     static func upNext(from tasks: [TaskItem], excludingIDs: Set<UUID> = [], limit: Int = 3) -> [TaskItem] {
         tasks
-            .filter { $0.isActionable && !$0.isCurrent && !excludingIDs.contains($0.id) }
+            .filter { task in
+                guard task.isActionable, !task.isCurrent, !excludingIDs.contains(task.id) else {
+                    return false
+                }
+                // Chores stay hidden until their occurrence is actually due — a weekly chore
+                // shouldn't fill "Up next" all week, only once it's due today (or overdue).
+                if task.isChore, !task.isDueTodayOrOverdue { return false }
+                return true
+            }
             .sorted(by: isHigherPriority)
             .prefix(limit)
             .map { $0 }

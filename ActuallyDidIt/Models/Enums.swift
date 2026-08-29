@@ -65,14 +65,11 @@ enum NudgeIntensity: String, Codable, CaseIterable {
     }
 }
 
-/// A preset "how long am I away" option for pausing a Chore, and the resume date it produces.
-/// Used by the Pause controls in the task detail view and the row overflow menu.
-struct PauseDuration: Identifiable {
-    let label: String
+/// A "how long am I away" option for pausing a Chore, and the resume date it produces.
+/// Used by the one-tap Pause action in the row overflow menu.
+struct PauseDuration {
     private let component: Calendar.Component
     private let value: Int
-
-    var id: String { label }
 
     /// The date the chore should come back, pinned to the start of that day.
     func resumeDate(from reference: Date = Date()) -> Date {
@@ -81,11 +78,8 @@ struct PauseDuration: Identifiable {
         return calendar.date(byAdding: component, value: value, to: start) ?? reference
     }
 
-    static let presets: [PauseDuration] = [
-        PauseDuration(label: "1 week", component: .weekOfYear, value: 1),
-        PauseDuration(label: "2 weeks", component: .weekOfYear, value: 2),
-        PauseDuration(label: "1 month", component: .month, value: 1)
-    ]
+    /// The default pause length used by the quick one-tap action — a week away.
+    static let `default` = PauseDuration(component: .weekOfYear, value: 1)
 }
 
 /// A user-selectable accent colour for the app. Backed by `String` so it stores directly in

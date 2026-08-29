@@ -4,7 +4,8 @@
 //
 //  The opt-in "everything" screen. Splits tasks into ToDos (one-off) and Chores (recurring),
 //  plus a collapsed-by-default Completed section. Tapping a task asks to set it as the current
-//  focus; swiping marks it Done; the trailing menu holds Edit / Delete.
+//  focus; the leading checkbox marks it Done (or reopens a completed task); swiping deletes; the
+//  trailing menu holds Edit / Delete.
 //
 
 import SwiftUI
@@ -146,6 +147,9 @@ struct LibraryView: View {
 
     private func completedTaskRow(_ task: TaskItem) -> some View {
         HStack(spacing: 8) {
+            TaskCheckbox(isChecked: true) {
+                TaskActions.markUnfinished(task, in: modelContext)
+            }
             TaskRowView(task: task, isCompleted: true)
             Spacer(minLength: 0)
             Menu {
