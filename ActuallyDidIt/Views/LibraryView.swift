@@ -220,36 +220,60 @@ struct TaskRowView: View {
                 }
             }
 
-            if isCompleted {
-                if let completedAt = task.completedAt {
-                    Text("Done \(completedAt.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            // Caption and tags share one line so tags add no extra row height: the metadata sits
+            // left, a couple of compact tag chips trail on the right.
+            FlowLayout {
+                captionLine
+                    .layoutPriority(1)
+                if !task.tags.isEmpty {
+                    compactTags
                 }
-            } else if let pausedLabel = task.pausedUntilLabel {
-                Text(pausedLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else if task.isOverdue {
-                metadataText(prefix: "Overdue · ")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            } else {
-                metadataText()
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if !task.tags.isEmpty {
-                FlowLayout(spacing: 6) {
-                    ForEach(task.tags, id: \.self) { tag in
-                        TagChip(text: tag)
-                    }
-                }
-                .padding(.top, 2)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// The metadata caption, whose text and colour depend on the task's state.
+    @ViewBuilder private var captionLine: some View {
+        if isCompleted {
+            if let completedAt = task.completedAt {
+                Text("Done \(completedAt.formatted(date: .abbreviated, time: .omitted))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else if let pausedLabel = task.pausedUntilLabel {
+            Text(pausedLabel)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if task.isOverdue {
+            metadataText(prefix: "Overdue · ")
+                .font(.caption)
+                .foregroundStyle(.red)
+        } else {
+            metadataText()
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// The first couple of tags as compact chips, with a "+N" when there are more, so the row stays
+    /// to a single caption line no matter how many tags a task carries.
+    private var compactTags: some View {
+        let visible = task.tags.prefix(2)
+        let overflow = task.tags.count - visible.count
+        return HStack(spacing: 4) {
+            ForEach(Array(visible), id: \.self) { tag in
+                TagChip(text: tag, compact: true)
+            }
+            if overflow > 0 {
+                Text("+\(overflow)")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.tint)
+            }
+        }
+        .lineLimit(1)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Tags: \(task.tags.joined(separator: ", "))")
     }
 }
 

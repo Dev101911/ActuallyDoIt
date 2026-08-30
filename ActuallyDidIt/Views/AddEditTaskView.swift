@@ -274,9 +274,6 @@ struct TaskFormFields: View {
             TextField("What needs doing?", text: $editor.title)
             TextField("Notes (optional)", text: $editor.notes, axis: .vertical)
                 .lineLimit(1...4)
-        }
-
-        Section("Tags") {
             TagEditorField(tags: $editor.tags, suggestions: tagSuggestions)
         }
 

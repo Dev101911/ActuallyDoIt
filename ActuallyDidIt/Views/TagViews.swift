@@ -69,12 +69,14 @@ struct FlowLayout: Layout {
 /// "x" so the tag can be deleted (used in the editor); without it the chip is display-only.
 struct TagChip: View {
     let text: String
+    /// A smaller, tighter chip for dense contexts like task rows.
+    var compact: Bool = false
     var onRemove: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 4) {
             Text(text)
-                .font(.caption.weight(.medium))
+                .font(compact ? .caption2.weight(.medium) : .caption.weight(.medium))
             if let onRemove {
                 Button(action: onRemove) {
                     Image(systemName: "xmark")
@@ -85,8 +87,8 @@ struct TagChip: View {
             }
         }
         .foregroundStyle(.tint)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
+        .padding(.horizontal, compact ? 7 : 10)
+        .padding(.vertical, compact ? 2 : 5)
         .background(.tint.opacity(0.12), in: Capsule())
     }
 }
@@ -101,6 +103,8 @@ struct TagEditorField: View {
     var suggestions: [String]
 
     @State private var draft = ""
+    
+    @FocusState private var isTagsFocused: Bool
 
     /// Suggestions not already applied to this task (case-insensitive).
     private var unusedSuggestions: [String] {
@@ -118,13 +122,14 @@ struct TagEditorField: View {
                 }
             }
 
-            TextField("Add a tag", text: $draft)
+            TextField("Add a tag (optional)", text: $draft)
                 .textInputAutocapitalization(.words)
                 .autocorrectionDisabled()
                 .submitLabel(.done)
                 .onSubmit(commitDraft)
+                .focused($isTagsFocused)
 
-            if !unusedSuggestions.isEmpty {
+            if !unusedSuggestions.isEmpty && isTagsFocused {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Suggestions")
                         .font(.caption)
