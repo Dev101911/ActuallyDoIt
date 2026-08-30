@@ -28,38 +28,44 @@ enum SampleData {
             notes: "Mention the kitchen tap and ask for a plumber.",
             estimatedMinutes: 15,
             dueDate: today,
-            nudgePolicy: NudgePolicy(intensity: .persistent)
+            nudgePolicy: NudgePolicy(intensity: .persistent),
+            tags: ["Home", "Admin"]
         )
 
         let bookDentist = TaskItem(
             title: "Book a dentist appointment",
             estimatedMinutes: 10,
             dueDate: day(-1), // overdue
-            nudgePolicy: NudgePolicy(intensity: .relentless)
+            nudgePolicy: NudgePolicy(intensity: .relentless),
+            tags: ["Health", "Admin"]
         )
 
         let renewPassport = TaskItem(
             title: "Renew passport",
             notes: "Photos are in the drawer.",
             estimatedMinutes: 45,
-            dueDate: day(14)
+            dueDate: day(14),
+            tags: ["Admin"]
         )
 
         let quickTidyInbox = TaskItem(
             title: "Reply to 3 emails",
-            estimatedMinutes: 5
+            estimatedMinutes: 5,
+            tags: ["Work"]
         )
 
         let readChapter = TaskItem(
             title: "Read one chapter of the report",
-            estimatedMinutes: 30
+            estimatedMinutes: 30,
+            tags: ["Work"]
         )
 
         let bigDeepClean = TaskItem(
             title: "Sort out the spare room",
             notes: "Boxes, old clothes, the lot.",
             estimatedMinutes: 120,
-            nudgePolicy: NudgePolicy(intensity: .gentle)
+            nudgePolicy: NudgePolicy(intensity: .gentle),
+            tags: ["Home"]
         )
 
         // MARK: Recurring Chores
@@ -68,21 +74,24 @@ enum SampleData {
             estimatedMinutes: 5,
             dueDate: today,
             recurrenceRule: RecurrenceRule(frequency: .weekly, interval: 1),
-            nudgePolicy: NudgePolicy(intensity: .persistent)
+            nudgePolicy: NudgePolicy(intensity: .persistent),
+            tags: ["Home"]
         )
 
         let waterPlants = TaskItem(
             title: "Water the plants",
             estimatedMinutes: 10,
             dueDate: day(1),
-            recurrenceRule: RecurrenceRule(frequency: .everyNDays, interval: 3)
+            recurrenceRule: RecurrenceRule(frequency: .everyNDays, interval: 3),
+            tags: ["Home"]
         )
 
         let dishes = TaskItem(
             title: "Wash the dishes",
             estimatedMinutes: 15,
             dueDate: today,
-            recurrenceRule: RecurrenceRule(frequency: .daily, interval: 1)
+            recurrenceRule: RecurrenceRule(frequency: .daily, interval: 1),
+            tags: ["Home"]
         )
 
         let payRent = TaskItem(
@@ -90,7 +99,8 @@ enum SampleData {
             estimatedMinutes: 5,
             dueDate: day(5),
             recurrenceRule: RecurrenceRule(frequency: .monthly, interval: 1),
-            nudgePolicy: NudgePolicy(intensity: .relentless)
+            nudgePolicy: NudgePolicy(intensity: .relentless),
+            tags: ["Home", "Admin"]
         )
 
         // A chore paused while away (e.g. on holiday), to show the paused state.

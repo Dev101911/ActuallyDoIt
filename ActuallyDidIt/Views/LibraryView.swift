@@ -239,6 +239,15 @@ struct TaskRowView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            if !task.tags.isEmpty {
+                FlowLayout(spacing: 6) {
+                    ForEach(task.tags, id: \.self) { tag in
+                        TagChip(text: tag)
+                    }
+                }
+                .padding(.top, 2)
+            }
         }
         .padding(.vertical, 4)
     }

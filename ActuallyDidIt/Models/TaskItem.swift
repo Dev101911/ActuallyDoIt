@@ -19,6 +19,11 @@ final class TaskItem {
     var title: String = ""
     var notes: String?
 
+    /// Freeform user-assigned tags for grouping and filtering (e.g. "Home", "Work"). Stored as a
+    /// plain string array so it needs no separate model and migrates cleanly (additive, defaulted →
+    /// CloudKit-safe). Tag display case is preserved; de-duplication is case-insensitive.
+    var tags: [String] = []
+
     /// How long the user thinks this takes, in minutes. Powers the "Pick For Me" feature.
     var estimatedMinutes: Int = 15
 
@@ -60,10 +65,12 @@ final class TaskItem {
          dueAlertLeadMinutes: Int? = nil,
          recurrenceRule: RecurrenceRule? = nil,
          nudgePolicy: NudgePolicy = .default,
-         verificationMethod: VerificationMethod = .tapToConfirm) {
+         verificationMethod: VerificationMethod = .tapToConfirm,
+         tags: [String] = []) {
         self.id = UUID()
         self.title = title
         self.notes = notes
+        self.tags = tags
         self.estimatedMinutes = estimatedMinutes
         self.dueDate = dueDate
         self.dueAlertLeadMinutes = dueAlertLeadMinutes
@@ -163,6 +170,41 @@ extension TaskItem {
 
     /// e.g. "15 min".
     var estimatedTimeLabel: String { "\(estimatedMinutes) min" }
+}
+
+// MARK: - Tags
+
+extension TaskItem {
+    /// Cleans up a raw tag string, returning `nil` when there's nothing left after trimming so
+    /// blank entries never get stored.
+    static func normalize(_ raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// Every distinct tag used across the given tasks, de-duplicated case-insensitively (keeping the
+    /// first-seen display case) and sorted alphabetically. Powers the filter options and the
+    /// suggestions offered while editing a task.
+    static func allTags(from tasks: [TaskItem]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for tag in tasks.flatMap(\.tags) {
+            let key = tag.lowercased()
+            if seen.insert(key).inserted {
+                result.append(tag)
+            }
+        }
+        return result.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    /// Whether this task passes the given tag filter. An empty selection matches everything;
+    /// otherwise the task matches when it shares at least one tag with the selection (OR),
+    /// compared case-insensitively.
+    func matchesTagFilter(_ selected: Set<String>) -> Bool {
+        guard !selected.isEmpty else { return true }
+        let selectedLower = Set(selected.map { $0.lowercased() })
+        return tags.contains { selectedLower.contains($0.lowercased()) }
+    }
 }
 
 // MARK: - Sorting

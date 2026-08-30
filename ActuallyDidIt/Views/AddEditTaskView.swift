@@ -45,6 +45,7 @@ final class TaskEditor {
     var title: String
     var notes: String
     var estimatedMinutes: Int
+    var tags: [String]
 
     var kind: Kind
 
@@ -73,6 +74,7 @@ final class TaskEditor {
         title = task?.title ?? ""
         notes = task?.notes ?? ""
         estimatedMinutes = task?.estimatedMinutes ?? 15
+        tags = task?.tags ?? []
 
         // Derive the task kind from what the stored task already has; new tasks default to a due date.
         if task?.recurrenceRule != nil {
@@ -148,6 +150,7 @@ final class TaskEditor {
 
         if !trimmedTitle.isEmpty { task.title = title }
         task.notes = trimmedNotes.isEmpty ? nil : trimmedNotes
+        task.tags = tags
         task.estimatedMinutes = estimatedMinutes
         task.dueDate = due
         task.dueAlertLeadMinutes = alertLead
@@ -166,7 +169,8 @@ final class TaskEditor {
             dueDate: due,
             dueAlertLeadMinutes: alertLead,
             recurrenceRule: recurrence,
-            nudgePolicy: resolvedPolicy
+            nudgePolicy: resolvedPolicy,
+            tags: tags
         )
     }
 }
@@ -222,6 +226,12 @@ struct AddEditTaskView: View {
 struct TaskFormFields: View {
     @Bindable var editor: TaskEditor
 
+    /// Every task, used to suggest tags already in use elsewhere.
+    @Query private var allTasks: [TaskItem]
+
+    /// Tags used across the store, offered as quick-add suggestions in the Tags section.
+    private var tagSuggestions: [String] { TaskItem.allTags(from: allTasks) }
+
     /// Time-of-day pickers for the selected intensity, matching the Settings "Nudge times" layout.
     @ViewBuilder private var nudgeTimePickers: some View {
         switch editor.intensity {
@@ -264,6 +274,10 @@ struct TaskFormFields: View {
             TextField("What needs doing?", text: $editor.title)
             TextField("Notes (optional)", text: $editor.notes, axis: .vertical)
                 .lineLimit(1...4)
+        }
+
+        Section("Tags") {
+            TagEditorField(tags: $editor.tags, suggestions: tagSuggestions)
         }
 
         Section("Time needed") {

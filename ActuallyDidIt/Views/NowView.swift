@@ -23,21 +23,35 @@ struct NowView: View {
     @State private var showingPickForMe = false
     @State private var showingSettings = false
     @State private var showingTutorial = false
+    /// The tags currently selected in the filter. Empty means "show everything".
+    @State private var tagFilter: Set<String> = []
     /// The task to open, set when the user taps a task's notification.
     @State private var routedTask: TaskItem?
 
+    /// The "Doing now" focus is intentionally *not* filtered — the thing you're working on stays
+    /// pinned regardless of the tag filter.
     private var currentTask: TaskItem? {
         allTasks.first { $0.isCurrent }
     }
 
+    /// Every distinct tag in use, driving the filter menu's options.
+    private var availableTags: [String] {
+        TaskItem.allTags(from: allTasks)
+    }
+
+    /// The task pool the list sections are built from, narrowed to the selected tags (OR).
+    private var filteredTasks: [TaskItem] {
+        allTasks.filter { $0.matchesTagFilter(tagFilter) }
+    }
+
     /// Overdue + due-today actionable tasks — the time-critical "Today" group.
     private var dueToday: [TaskItem] {
-        TaskPrioritizer.dueToday(from: allTasks)
+        TaskPrioritizer.dueToday(from: filteredTasks)
     }
 
     /// Forward-looking preview, excluding anything already shown under "Today".
     private var upNext: [TaskItem] {
-        TaskPrioritizer.upNext(from: allTasks, excludingIDs: Set(dueToday.map(\.id)), limit: 3)
+        TaskPrioritizer.upNext(from: filteredTasks, excludingIDs: Set(dueToday.map(\.id)), limit: 3)
             .sorted(by: TaskItem.byOverdueThenDueDate)
     }
 
@@ -45,7 +59,7 @@ struct NowView: View {
     /// day-progress ring so it reflects all outstanding and completed work for today.
     private var todayScheduled: [TaskItem] {
         let todayStart = Calendar.current.startOfDay(for: Date())
-        return allTasks.filter { task in
+        return filteredTasks.filter { task in
             guard let due = task.dueDate else { return false }
             return Calendar.current.startOfDay(for: due) <= todayStart
         }
@@ -59,7 +73,7 @@ struct NowView: View {
     /// newest first. Includes finished chores: completing a chore re-arms it to `.pending` for its
     /// next occurrence but keeps `completedAt` set, so it still counts as done for today.
     private var completedToday: [TaskItem] {
-        allTasks
+        filteredTasks
             .filter { task in
                 guard let completedAt = task.completedAt,
                       Calendar.current.isDateInToday(completedAt) else { return false }
@@ -78,10 +92,24 @@ struct NowView: View {
             && completedToday.isEmpty
     }
 
+    /// True when the board is empty only because the active filter hid everything — there are tasks,
+    /// just none matching the selected tags. Drives a distinct "nothing matches" state.
+    private var isFilteredEmpty: Bool {
+        isEmpty && !tagFilter.isEmpty && !allTasks.isEmpty
+    }
+
     var body: some View {
         NavigationStack {
             Group {
-                if isEmpty {
+                if isFilteredEmpty {
+                    ContentUnavailableView {
+                        Label("No tasks match this filter", systemImage: "line.3.horizontal.decrease.circle")
+                    } description: {
+                        Text("Nothing is tagged with your current selection.")
+                    } actions: {
+                        Button("Clear filter") { tagFilter.removeAll() }
+                    }
+                } else if isEmpty {
                     EmptyNowView(
                         onPickForMe: { showingPickForMe = true },
                         onBrowse: { showingLibrary = true }
@@ -163,6 +191,11 @@ struct NowView: View {
                         Label("All tasks", systemImage: "list.bullet")
                     }
                 }
+                if !availableTags.isEmpty {
+                    ToolbarItem(placement: .topBarLeading) {
+                        tagFilterMenu
+                    }
+                }
                 // Pick for me lives quietly in the toolbar now — only for choosing a focus, so it's
                 // disabled while one is already set.
                 ToolbarItem(placement: .topBarTrailing) {
@@ -199,6 +232,40 @@ struct NowView: View {
             .onChange(of: notificationRouter.selectedTaskID) { _, id in
                 openRoutedTask(id)
             }
+        }
+    }
+
+    /// A menu of the tags in use, each toggling in/out of the filter, plus a Clear option when a
+    /// filter is active. The icon fills in to signal an active filter at a glance.
+    private var tagFilterMenu: some View {
+        Menu {
+            if !tagFilter.isEmpty {
+                Button(role: .destructive) {
+                    tagFilter.removeAll()
+                } label: {
+                    Label("Clear filter", systemImage: "xmark.circle")
+                }
+            }
+            Section("Tags") {
+                ForEach(availableTags, id: \.self) { tag in
+                    Toggle(tag, isOn: Binding(
+                        get: { tagFilter.contains(tag) },
+                        set: { _ in toggle(tag) }
+                    ))
+                }
+            }
+        } label: {
+            Label("Filter", systemImage: tagFilter.isEmpty
+                  ? "line.3.horizontal.decrease.circle"
+                  : "line.3.horizontal.decrease.circle.fill")
+        }
+    }
+
+    private func toggle(_ tag: String) {
+        if tagFilter.contains(tag) {
+            tagFilter.remove(tag)
+        } else {
+            tagFilter.insert(tag)
         }
     }
 

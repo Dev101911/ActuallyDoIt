@@ -69,6 +69,41 @@ struct TaskItemHelperTests {
     }
 }
 
+@Suite("Task tags")
+struct TaskTagTests {
+
+    @Test("normalize trims whitespace and rejects empty input")
+    func normalize() {
+        #expect(TaskItem.normalize("  Work  ") == "Work")
+        #expect(TaskItem.normalize("   ") == nil)
+        #expect(TaskItem.normalize("") == nil)
+    }
+
+    @Test("allTags de-dupes case-insensitively and sorts alphabetically")
+    func allTags() {
+        let tasks = [
+            TaskItem(title: "a", tags: ["Work", "Home"]),
+            TaskItem(title: "b", tags: ["work", "Admin"]),
+            TaskItem(title: "c", tags: []),
+        ]
+        // "work"/"Work" collapse to the first-seen "Work"; result is sorted.
+        #expect(TaskItem.allTags(from: tasks) == ["Admin", "Home", "Work"])
+    }
+
+    @Test("An empty filter matches every task")
+    func emptyFilterMatchesEverything() {
+        #expect(TaskItem(title: "untagged").matchesTagFilter([]))
+        #expect(TaskItem(title: "tagged", tags: ["Work"]).matchesTagFilter([]))
+    }
+
+    @Test("A non-empty filter matches tasks sharing any selected tag (OR), case-insensitively")
+    func filterUsesOrSemantics() {
+        let task = TaskItem(title: "x", tags: ["Home"])
+        #expect(task.matchesTagFilter(["Work", "home"]))   // matches on Home (case-insensitive)
+        #expect(!task.matchesTagFilter(["Work", "Admin"])) // shares none
+    }
+}
+
 @Suite("RecurrenceRule")
 struct RecurrenceRuleTests {
 
