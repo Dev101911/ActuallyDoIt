@@ -39,6 +39,13 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         guard let raw = userInfo[Self.taskIDKey] as? String,
               let id = UUID(uuidString: raw) else { return }
-        await MainActor.run { self.selectedTaskID = id }
+        // Hand the id to the UI on a fresh main-actor turn rather than `await`-ing the mutation
+        // inline. Awaiting here runs the state change as part of the notification-response
+        // continuation, which on a cold launch UIKit drains inside its post-CATransaction commit /
+        // state-restoration snapshot pass (`_updateStateRestorationArchive…` →
+        // `_performBlockAfterCATransactionCommit…`). Presenting the routed task's sheet from within
+        // that commit crashes. Scheduling a detached task lets the delegate return immediately and
+        // defers the mutation — and the sheet presentation it drives — to a clean runloop turn.
+        Task { @MainActor in self.selectedTaskID = id }
     }
 }

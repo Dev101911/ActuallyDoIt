@@ -111,8 +111,8 @@ private struct SubtleSecondaryButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     let accent: Color
 
-    // Matches the corner radius the primary styles use at `.controlSize(.large)`.
-    private let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+    // Matches the capsule shape `.borderedProminent` uses at `.controlSize(.large)`.
+    private let shape = Capsule()
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -146,8 +146,8 @@ private struct SubtleSecondaryButtonStyle: ButtonStyle {
 private struct TintedOutlineButtonStyle: ButtonStyle {
     let accent: Color
 
-    // Matches the corner radius `.borderedProminent` uses at `.controlSize(.large)`.
-    private let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+    // Matches the capsule shape `.borderedProminent` uses at `.controlSize(.large)`.
+    private let shape = Capsule()
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label

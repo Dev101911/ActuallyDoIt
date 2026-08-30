@@ -35,15 +35,29 @@ struct TaskDetailView: View {
                     PauseChoreSection(task: task)
                 }
 
-                if !task.isCurrent {
+                if task.status != .completed {
                     Section {
-                        StandardButton("Set as doing now", role: .secondary) {
-                            // `onDisappear` commits the edits and reschedules when the sheet closes.
-                            TaskActions.promoteToCurrent(task, in: modelContext)
-                            dismiss()
+                        // Both buttons live in one cell so the List's first/last-cell corner
+                        // rounding doesn't clip an individual button's corners asymmetrically.
+                        VStack(spacing: 12) {
+                            if !task.isCurrent {
+                                StandardButton("Set as doing now", role: .secondary) {
+                                    // `onDisappear` commits the edits and reschedules when the sheet closes.
+                                    TaskActions.promoteToCurrent(task, in: modelContext)
+                                    dismiss()
+                                }
+                            }
+
+                            StandardButton("Mark as complete", role: .primary) {
+                                // Commit any edits first so completion acts on the latest state, then
+                                // complete. `onDisappear` still runs but re-applies the same values.
+                                editor.apply(to: task)
+                                TaskActions.complete(task, in: modelContext)
+                                dismiss()
+                            }
                         }
                         .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets())
+                        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 12, trailing: 20))
                     }
                 }
             }

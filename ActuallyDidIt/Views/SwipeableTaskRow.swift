@@ -25,8 +25,11 @@ struct TaskCheckbox: View {
     var isChecked: Bool
     var action: () -> Void
 
-    /// The state actually drawn — seeded from `isChecked`, toggled optimistically on tap.
-    @State private var displayChecked: Bool
+    /// A transient optimistic override of `isChecked`, set on tap so the check/uncheck visibly
+    /// lands before the row commits (and usually leaves the list). Cleared once the action
+    /// commits and whenever `isChecked` changes — so a row whose `@State` is recycled by the
+    /// `List` can never get stuck showing a stale check that no longer matches the task.
+    @State private var optimisticChecked: Bool?
     /// Guards against a second tap firing the action again during the commit delay.
     @State private var isCommitting = false
     /// Bumped on every tap so `sensoryFeedback` fires even when committing removes the row.
@@ -36,11 +39,9 @@ struct TaskCheckbox: View {
     /// How long the check/uncheck animation gets to land before the change is committed.
     private let commitDelay: Duration = .seconds(0.35)
 
-    init(isChecked: Bool, action: @escaping () -> Void) {
-        self.isChecked = isChecked
-        self.action = action
-        _displayChecked = State(initialValue: isChecked)
-    }
+    /// The state actually drawn: the optimistic override while a tap settles, otherwise the live
+    /// `isChecked` — so with no tap in flight the box always reflects the source of truth.
+    private var displayChecked: Bool { optimisticChecked ?? isChecked }
 
     var body: some View {
         Button(action: tapped) {
@@ -67,8 +68,9 @@ struct TaskCheckbox: View {
         }
         .buttonStyle(.plain)
         .sensoryFeedback(.impact(weight: .light), trigger: tapCount)
-        // Keep the drawn state in sync if the underlying task changes for any other reason.
-        .onChange(of: isChecked) { _, newValue in displayChecked = newValue }
+        // Once the underlying task's state actually changes, drop any optimistic override so the
+        // drawn state follows the source of truth.
+        .onChange(of: isChecked) { _, _ in optimisticChecked = nil }
         .accessibilityLabel(displayChecked ? "Mark as unfinished" : "Mark as done")
         .accessibilityAddTraits(displayChecked ? [.isButton, .isSelected] : .isButton)
     }
@@ -78,12 +80,15 @@ struct TaskCheckbox: View {
         isCommitting = true
         tapCount += 1
         withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-            displayChecked.toggle()
+            optimisticChecked = !displayChecked
         }
         // Let the animation play, then commit — the row typically leaves the list at this point.
         Task {
             try? await Task.sleep(for: commitDelay)
             action()
+            // Hand back to the live `isChecked`; the row usually leaves the list now, but if it
+            // stays (or its state is later recycled) it won't be stuck on the optimistic value.
+            optimisticChecked = nil
             isCommitting = false
         }
     }
@@ -91,6 +96,7 @@ struct TaskCheckbox: View {
 
 struct SwipeableTaskRow<Content: View, Accessory: View>: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(AccentTheme.storageKey) private var accentTheme = AccentTheme.default
 
     let task: TaskItem
     var onTap: () -> Void
@@ -110,6 +116,16 @@ struct SwipeableTaskRow<Content: View, Accessory: View>: View {
             .buttonStyle(.plain)
 
             accessory()
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            if !task.isCurrent {
+                Button {
+                    TaskActions.promoteToCurrent(task, in: modelContext)
+                } label: {
+                    Label("Doing now", systemImage: "target")
+                }
+                .tint(accentTheme.color)
+            }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {

@@ -196,6 +196,14 @@ struct TaskRowView: View {
 
     private var isPaused: Bool { !isCompleted && task.isPaused }
 
+    /// The caption line for an active task, with a small repeat glyph prefixed for chores so a
+    /// recurring chore reads differently from a one-off to-do at a glance. The glyph inherits the
+    /// caption's colour (secondary normally, red when overdue).
+    private func metadataText(prefix: String = "") -> Text {
+        guard task.isChore else { return Text(prefix + metadata) }
+        return Text("\(Image(systemName: "arrow.triangle.2.circlepath")) \(prefix)\(metadata)")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
@@ -223,11 +231,11 @@ struct TaskRowView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else if task.isOverdue {
-                Text("Overdue · \(metadata)")
+                metadataText(prefix: "Overdue · ")
                     .font(.caption)
                     .foregroundStyle(.red)
             } else {
-                Text(metadata)
+                metadataText()
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

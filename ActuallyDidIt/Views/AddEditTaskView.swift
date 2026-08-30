@@ -49,17 +49,10 @@ final class TaskEditor {
     var kind: Kind
 
     var dueDate: Date
-    var includeTime: Bool {
-        didSet {
-            // The lead time is measured differently for timed vs date-only due dates, so reset it to
-            // a valid default whenever the mode changes.
-            guard includeTime != oldValue else { return }
-            alertLeadMinutes = Self.defaultLeadMinutes(includeTime: includeTime)
-        }
-    }
 
-    /// Whether a "before due" alert is enabled, and how far ahead it fires. The lead is measured in
-    /// minutes for a timed due date and in whole days for a date-only one (see `TaskItem`).
+    /// Whether a "before due" alert is enabled, and how far ahead it fires. Due dates are date-only,
+    /// so the lead is measured in whole days (see `TaskItem`); time-of-day reminders come from the
+    /// per-task nudge times instead.
     var alertEnabled: Bool
     var alertLeadMinutes: Int
 
@@ -93,12 +86,8 @@ final class TaskEditor {
         }
 
         dueDate = task?.dueDate ?? Date()
-        // Treat a stored due date that isn't pinned to midnight as having a specific time.
-        let storedIncludeTime = task?.dueDate.map { Calendar.current.startOfDay(for: $0) != $0 } ?? false
-        includeTime = storedIncludeTime
         alertEnabled = task?.dueAlertLeadMinutes != nil
-        alertLeadMinutes = task?.dueAlertLeadMinutes
-            ?? Self.defaultLeadMinutes(includeTime: storedIncludeTime)
+        alertLeadMinutes = task?.dueAlertLeadMinutes ?? Self.defaultLeadMinutes
         frequency = task?.recurrenceRule?.frequency ?? .weekly
         interval = task?.recurrenceRule?.interval ?? 1
         weekdays = Set(task?.recurrenceRule?.weekdays ?? [])
@@ -113,33 +102,16 @@ final class TaskEditor {
 
     let minuteOptions = [5, 10, 15, 30, 45, 60, 90, 120]
 
-    /// Alert lead-time choices for a due date *with* a time, as (label, minutes-before).
-    static let timedLeadOptions: [(label: String, minutes: Int)] = [
-        ("At time due", 0),
-        ("15 minutes before", 15),
-        ("30 minutes before", 30),
-        ("1 hour before", 60),
-        ("2 hours before", 120),
-        ("1 day before", 24 * 60)
-    ]
-
     /// Alert lead-time choices for a date-only due date, as (label, days-before expressed in minutes).
-    static let dateLeadOptions: [(label: String, minutes: Int)] = [
+    static let leadOptions: [(label: String, minutes: Int)] = [
         ("On the day (9 AM)", 0),
         ("1 day before", 24 * 60),
         ("2 days before", 2 * 24 * 60),
         ("1 week before", 7 * 24 * 60)
     ]
 
-    /// The lead options appropriate to whether the due date carries a time.
-    var leadOptions: [(label: String, minutes: Int)] {
-        includeTime ? Self.timedLeadOptions : Self.dateLeadOptions
-    }
-
     /// A sensible default lead time when the alert is first switched on.
-    static func defaultLeadMinutes(includeTime: Bool) -> Int {
-        includeTime ? 30 : 24 * 60
-    }
+    static let defaultLeadMinutes = 24 * 60
 
     /// The nudge policy as currently configured, carrying this task's own nudge times.
     var resolvedPolicy: NudgePolicy {
@@ -155,8 +127,8 @@ final class TaskEditor {
         case .none:
             return (nil, nil, nil)
         case .dueDate:
-            // Without a specific time, pin the due date to the start of the day.
-            let due = includeTime ? dueDate : Calendar.current.startOfDay(for: dueDate)
+            // Due dates are date-only; pin them to the start of the day.
+            let due = Calendar.current.startOfDay(for: dueDate)
             return (nil, due, alertEnabled ? alertLeadMinutes : nil)
         case .chore:
             let days = frequency == .weekly ? Array(weekdays) : nil
@@ -318,15 +290,11 @@ struct TaskFormFields: View {
 
             case .dueDate:
                 DatePicker("Due", selection: $editor.dueDate, displayedComponents: .date)
-                Toggle("Include time", isOn: $editor.includeTime)
-                if editor.includeTime {
-                    DatePicker("Time", selection: $editor.dueDate, displayedComponents: .hourAndMinute)
-                }
 
                 Toggle("Alert", isOn: $editor.alertEnabled)
                 if editor.alertEnabled {
                     Picker("Alert", selection: $editor.alertLeadMinutes) {
-                        ForEach(editor.leadOptions, id: \.minutes) { option in
+                        ForEach(TaskEditor.leadOptions, id: \.minutes) { option in
                             Text(option.label).tag(option.minutes)
                         }
                     }
