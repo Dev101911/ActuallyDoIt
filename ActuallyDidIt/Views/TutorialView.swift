@@ -120,7 +120,6 @@ private enum TutorialStep: CaseIterable, Hashable {
     case pickForMe
     case library
     case nudges
-    case notificationLimit
     case widgets
 
     var title: String {
@@ -128,9 +127,8 @@ private enum TutorialStep: CaseIterable, Hashable {
         case .welcome:           return "One thing at a time"
         case .doingNow:          return "Doing now"
         case .pickForMe:         return "Can't decide? Pick for me"
-        case .library:           return "Your full list, when you want it"
-        case .nudges:            return "Nudges that match the task"
-        case .notificationLimit: return "Reminders have a limit"
+        case .library:           return "Everything in its place"
+        case .nudges:            return "Nudges that fit the task"
         case .widgets:           return "Always a glance away"
         }
     }
@@ -138,19 +136,17 @@ private enum TutorialStep: CaseIterable, Hashable {
     var message: String {
         switch self {
         case .welcome:
-            return "If you tend to forget tasks — or swipe reminders away and never come back to them — ActuallyDidIt is built for you. It keeps gently resurfacing the one thing to do next until you've actually done it. Let's take a quick tour."
+            return "Forget tasks, or swipe reminders away and never come back? ActuallyDidIt keeps resurfacing the one thing to do next — and nudges you until you've actually done it. Here's the quick tour."
         case .doingNow:
-            return "The Now screen shows the one thing you're doing right now. Tap Done when you finish, or “Can't do this now” to step away without losing it."
+            return "The Now screen puts a single task front and centre. Tap Done when you finish it, or “Can't do this now” to step away without losing your place."
         case .pickForMe:
-            return "Not sure where to start? Tap Pick for me and the app chooses a sensible next task for you. “Up next” always previews what's most pressing."
+            return "Frozen by a full list? Tap Pick for me and the app picks a sensible task to start. “Up next” always previews what's most pressing — never the whole backlog."
         case .library:
-            return "Add tasks with a due date, time estimate, and how persistent its reminders should be. Your whole backlog lives in All tasks — out of sight until you need it."
+            return "Your full backlog lives in All tasks — one-off to-dos and recurring chores (daily, weekly, or monthly), out of sight until you need it. Tag tasks like Home or Work, then filter the Now screen to just those tags."
         case .nudges:
-            return "Every task can nudge you Gently, Persistently, or Relentlessly. Set exactly when reminders fire in Settings › Nudge times."
-        case .notificationLimit:
-            return "iOS caps every app at 64 scheduled reminders. So the app guarantees every task due today gets at least one nudge, then gives your most important tasks the extra reminders. If more are due than fit, a single summary reminder makes sure nothing slips."
+            return "Give each task its own intensity — Gentle, Persistent, or Relentless — and set exactly when its reminders fire, right there in the task. Away for a while? Pause a chore and its nudges rest until you're back."
         case .widgets:
-            return "Add the widget or Live Activity to see your current focus on the Home and Lock Screen — and mark it done without opening the app."
+            return "Add the widget or Lock Screen Live Activity to keep your current task in view — and tick it done without even opening the app."
         }
     }
 
@@ -162,7 +158,6 @@ private enum TutorialStep: CaseIterable, Hashable {
         case .pickForMe:         PickForMeIllustration()
         case .library:           LibraryIllustration()
         case .nudges:            NudgesIllustration()
-        case .notificationLimit: NotificationLimitIllustration()
         case .widgets:           WidgetsIllustration()
         }
     }
@@ -318,58 +313,6 @@ private struct NudgesIllustration: View {
                     }
                 }
             }
-        }
-    }
-}
-
-private struct NotificationLimitIllustration: View {
-    var body: some View {
-        IllustrationCard {
-            VStack(spacing: 10) {
-                ForEach(0..<3, id: \.self) { index in
-                    NotificationBubble(emphasized: index == 0)
-                }
-                SummaryBubble()
-            }
-        }
-    }
-
-    private struct NotificationBubble: View {
-        var emphasized: Bool
-
-        var body: some View {
-            HStack(spacing: 10) {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(.tint)
-                    .frame(width: 26, height: 26)
-                VStack(alignment: .leading, spacing: 5) {
-                    MockLine(widthFraction: emphasized ? 0.7 : 0.55, emphasized: emphasized)
-                    MockLine(widthFraction: 0.9)
-                }
-            }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(.tertiarySystemBackground))
-            )
-        }
-    }
-
-    private struct SummaryBubble: View {
-        var body: some View {
-            HStack(spacing: 10) {
-                Image(systemName: "tray.full.fill")
-                    .foregroundStyle(.tint)
-                Text("3 more due today")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            .padding(10)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.12))
-            )
         }
     }
 }
