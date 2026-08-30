@@ -98,7 +98,6 @@ struct LibraryView: View {
             }
             .sheet(isPresented: $showingAdd) {
                 AddEditTaskView()
-                    .interactiveDismissDisabled()
             }
             .confirmationDialog(
                 "Delete this task?",
@@ -221,12 +220,12 @@ struct TaskRowView: View {
             }
 
             // Caption and tags share one line so tags add no extra row height: the metadata sits
-            // left, a couple of compact tag chips trail on the right.
-            FlowLayout {
+            // left and the tags trail on the right, collapsing to a count badge when they don't fit.
+            HStack(spacing: 8) {
                 captionLine
                     .layoutPriority(1)
                 if !task.tags.isEmpty {
-                    compactTags
+                    trailingTags
                 }
             }
         }
@@ -256,24 +255,41 @@ struct TaskRowView: View {
         }
     }
 
-    /// The first couple of tags as compact chips, with a "+N" when there are more, so the row stays
-    /// to a single caption line no matter how many tags a task carries.
-    private var compactTags: some View {
-        let visible = task.tags.prefix(2)
-        let overflow = task.tags.count - visible.count
-        return HStack(spacing: 4) {
-            ForEach(Array(visible), id: \.self) { tag in
-                TagChip(text: tag, compact: true)
-            }
-            if overflow > 0 {
-                Text("+\(overflow)")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.tint)
-            }
+    /// The task's tags trailing the caption. Every chip shows its full text; when the full set
+    /// can't fit the remaining width they collapse to a single badge showing the tag count, so a
+    /// tag is never truncated and the row stays on one caption line.
+    private var trailingTags: some View {
+        ViewThatFits(in: .horizontal) {
+            tagChips
+            tagCountBadge
         }
-        .lineLimit(1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Tags: \(task.tags.joined(separator: ", "))")
+    }
+
+    /// Every tag as a compact chip with its full text.
+    private var tagChips: some View {
+        HStack(spacing: 4) {
+            ForEach(task.tags, id: \.self) { tag in
+                TagChip(text: tag, compact: true)
+                    .fixedSize()
+            }
+        }
+    }
+
+    /// A single capsule badge standing in for the tags when they don't fit, e.g. a tag glyph and "3".
+    private var tagCountBadge: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "tag.fill")
+                .font(.caption2)
+            Text("\(task.tags.count)")
+                .font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(.tint)
+        .fixedSize()
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2)
+        .background(.tint.opacity(0.12), in: Capsule())
     }
 }
 

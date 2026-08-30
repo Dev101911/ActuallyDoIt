@@ -1,0 +1,28 @@
+{
+  "configurations" : [
+    {
+      "id" : "B2A5F0C1-0000-4000-8000-000000000001",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:ActuallyDidIt.xcodeproj",
+      "identifier" : "DB7CC2B730207733005C873C",
+      "name" : "ActuallyDidIt"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:ActuallyDidIt.xcodeproj",
+        "identifier" : "DB7CC2D030207734005C873C",
+        "name" : "ActuallyDidItUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

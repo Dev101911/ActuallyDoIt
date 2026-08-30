@@ -23,10 +23,29 @@ struct ActuallyDidItApp: App {
     private let notificationRouter = NotificationRouter()
 
     init() {
+        #if DEBUG
+        // When launched for App Store screenshot capture, pin a deterministic look before any view
+        // reads its `@AppStorage`, and suppress the first-run tour so it never covers the UI.
+        if ActuallyDidItApp.isScreenshotMode {
+            UserDefaults.standard.set(AccentTheme.green.rawValue, forKey: AccentTheme.storageKey)
+            UserDefaults.standard.set(AppearanceTheme.light.rawValue, forKey: AppearanceTheme.storageKey)
+            UserDefaults.standard.set(true, forKey: TutorialView.storageKey)
+        }
+        #endif
+
         // Register the background reconcile handler before the app finishes launching, as
         // BGTaskScheduler requires. The request itself is submitted from the scene lifecycle below.
         BackgroundReconcile.register(container: sharedModelContainer)
     }
+
+    #if DEBUG
+    /// True when the app was launched by the screenshot UI test (see `Scripts/generate_screenshots.sh`).
+    /// In this mode the app uses a curated in-memory store and skips runtime side effects — notably
+    /// the notification-permission prompt — so captures are clean and deterministic.
+    static var isScreenshotMode: Bool {
+        CommandLine.arguments.contains("--screenshots")
+    }
+    #endif
 
     /// Builds the SwiftData container for the shared App Group store (see `SharedStore`) through the
     /// versioned `AppMigrationPlan`. The app opens the store *with* CloudKit — but only when an
@@ -42,6 +61,14 @@ struct ActuallyDidItApp: App {
     /// recovery, and retry with a fresh store so the app stays usable. A `fatalError` is kept only
     /// as an unreachable last resort, when even an empty store can't be created.
     static func makeSharedModelContainer() -> ModelContainer {
+        #if DEBUG
+        // Screenshot capture runs against a throwaway in-memory store so it never touches (or is
+        // polluted by) the user's real data or CloudKit.
+        if isScreenshotMode {
+            return SampleData.makeScreenshotContainer()
+        }
+        #endif
+
         // One-time move of any pre-App-Group store into the shared container.
         SharedStore.relocateLegacyStoreIfNeeded()
 
@@ -147,8 +174,13 @@ struct ActuallyDidItApp: App {
         WindowGroup {
             ContentView()
                 .task {
-                    // In DEBUG, populate the simulator with mock data on first launch.
                     #if DEBUG
+                    // Screenshot capture uses a pre-seeded in-memory store and must not trigger the
+                    // notification-permission prompt (it would cover the UI), so skip all launch
+                    // side effects in that mode.
+                    if ActuallyDidItApp.isScreenshotMode { return }
+
+                    // In DEBUG, populate the simulator with mock data on first launch.
                     SampleData.seedIfEmpty(sharedModelContainer.mainContext)
                     #endif
 

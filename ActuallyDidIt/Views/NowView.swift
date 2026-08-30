@@ -214,10 +214,10 @@ struct NowView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingLibrary) { LibraryView().interactiveDismissDisabled() }
-            .sheet(isPresented: $showingAdd) { AddEditTaskView().interactiveDismissDisabled() }
-            .sheet(isPresented: $showingPickForMe) { PickForMeSheet().interactiveDismissDisabled() }
-            .sheet(isPresented: $showingSettings) { SettingsView().interactiveDismissDisabled() }
+            .sheet(isPresented: $showingLibrary) { LibraryView() }
+            .sheet(isPresented: $showingAdd) { AddEditTaskView() }
+            .sheet(isPresented: $showingPickForMe) { PickForMeSheet() }
+            .sheet(isPresented: $showingSettings) { SettingsView() }
             .sheet(item: $routedTask) { task in
                 TaskDetailView(task: task)
             }
