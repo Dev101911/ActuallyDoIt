@@ -15,8 +15,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-PROJECT="ActuallyDidIt.xcodeproj"
-SCHEME="ActuallyDidIt"
+PROJECT="ActuallyDoIt.xcodeproj"
+SCHEME="ActuallyDoIt"
 DEVICE_NAME="iPhone 17 Pro Max"
 RESULT_BUNDLE="$REPO_ROOT/build/Screenshots.xcresult"
 OUTPUT_DIR="$REPO_ROOT/Marketing/final"
@@ -55,7 +55,7 @@ xcodebuild test \
     -scheme "$SCHEME" \
     -testPlan Screenshots \
     -destination "id=$UDID" \
-    -only-testing:ActuallyDidItUITests/ScreenshotTests \
+    -only-testing:ActuallyDoItUITests/ScreenshotTests \
     -resultBundlePath "$RESULT_BUNDLE" \
     > "$BUILD_LOG" 2>&1
 TEST_STATUS=$?

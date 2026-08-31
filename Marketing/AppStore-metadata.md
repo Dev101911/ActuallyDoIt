@@ -1,4 +1,4 @@
-# ActuallyDidIt — App Store metadata
+# ActuallyDoIt — App Store metadata
 
 Draft promotional copy for App Store Connect. Character limits noted per field — verify counts
 before pasting (limits are hard caps enforced by App Store Connect).
@@ -7,8 +7,8 @@ before pasting (limits are hard caps enforced by App Store Connect).
 
 ## App name  (max 30 chars)
 
-Primary:  `ActuallyDidIt`
-Alt (adds a hint for search):  `ActuallyDidIt — Focus & Do`   (26)
+Primary:  `ActuallyDoIt`
+Alt (adds a hint for search):  `ActuallyDoIt — Focus & Do`   (26)
 
 ## Subtitle  (max 30 chars)
 
@@ -19,7 +19,7 @@ Alternatives:
 
 ## Promotional text  (max 170 chars — editable anytime without review)
 
-> Forget, freeze, or drown in to-dos? ActuallyDidIt shows one task at a time and nudges you—gently
+> Forget, freeze, or drown in to-dos? ActuallyDoIt shows one task at a time and nudges you—gently
 > or relentlessly—until it's actually done. Free, private, no account.
 
 ## Keywords  (max 100 chars, comma-separated, no spaces; don't repeat name/subtitle words)
@@ -31,7 +31,7 @@ Alternatives:
 ## Description  (max 4000 chars)
 
 Some days the hardest part isn't doing the thing — it's deciding what to do, remembering it exists,
-and not drowning in everything else. ActuallyDidIt is a to-do app for exactly those days.
+and not drowning in everything else. ActuallyDoIt is a to-do app for exactly those days.
 
 Instead of a bottomless list, it shows you ONE thing to do right now. Everything else waits its turn.
 
@@ -46,7 +46,7 @@ NUDGES THAT ACTUALLY WORK
 • A friendly morning digest tells you what's on your plate for the day.
 
 CAN'T DECIDE? LET THE APP CHOOSE
-• Tap "Pick for me" and ActuallyDidIt suggests one task to start — beating the decision paralysis when everything feels equally impossible.
+• Tap "Pick for me" and ActuallyDoIt suggests one task to start — beating the decision paralysis when everything feels equally impossible.
 
 CHORES & ROUTINES
 • Set recurring chores (daily, weekly, monthly, or every few days) that quietly come back when they're due.
@@ -65,14 +65,14 @@ PRIVATE BY DESIGN
 Built for anyone whose brain gets overwhelmed easily — but genuinely useful for anyone who wants to
 stop managing a list and start finishing things.
 
-Download ActuallyDidIt, and actually do it.
+Download ActuallyDoIt, and actually do it.
 
 ---
 
 ## What's New  (release notes, max 4000 chars)
 
 First release:
-> Hello! This is the very first version of ActuallyDidIt.
+> Hello! This is the very first version of ActuallyDoIt.
 >
 > • Focus on one task at a time with the "Doing now" card
 > • Per-task nudges — from a gentle morning reminder to hourly until it's done
@@ -83,7 +83,7 @@ First release:
 > I build this on my own — feedback and ideas are hugely welcome. Thank you for trying it!
 
 Routine update:
-> Small fixes and polish to keep things smooth. Thanks for using ActuallyDidIt — if it's helping you
+> Small fixes and polish to keep things smooth. Thanks for using ActuallyDoIt — if it's helping you
 > get things done, a rating or review really helps.
 
 ---

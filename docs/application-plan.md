@@ -1,9 +1,9 @@
-# ADHDoIt — Application Plan
+# ActuallyDoIt — Application Plan
 
 ## 1. Overview
 
-**ADHDoIt** is an iOS reminders app designed specifically for people with ADHD. Unlike
-conventional reminder apps that fire a single notification and fall silent, ADHDoIt is built
+**ActuallyDoIt** is an iOS reminders app designed specifically for people with ADHD. Unlike
+conventional reminder apps that fire a single notification and fall silent, ActuallyDoIt is built
 around two core principles:
 
 1. **Persistent nudging** — it keeps poking the user until a task is actually addressed, rather
@@ -29,7 +29,7 @@ one-thing-at-a-time model.
 
 ### Design principle: reduce overwhelm
 
-Everything in ADHDoIt is measured against one question: *does this help the user do the next
+Everything in ActuallyDoIt is measured against one question: *does this help the user do the next
 thing, or does it pile more onto their plate?* Concretely:
 
 - The home screen leads with **one task**, not a list.
@@ -208,11 +208,11 @@ iOS does not allow a truly always-running background process, so persistence is 
 A standard notification is trivially dismissible — one swipe and it's gone. A **Live Activity**
 (ActivityKit) is the opposite: it stays pinned to the **Lock Screen** and, on supported devices,
 lives in the **Dynamic Island**, remaining visible until *the app* ends it. This makes it the
-ideal anti-dismissal mechanism for ADHDoIt.
+ideal anti-dismissal mechanism for ActuallyDoIt.
 
 **How it prevents easy dismissal:**
 
-- When a task is due (or the user starts working on one), ADHDoIt starts a Live Activity for that
+- When a task is due (or the user starts working on one), ActuallyDoIt starts a Live Activity for that
   task. It persists across the Lock Screen and Dynamic Island — a glance-proof, always-there
   reminder that a task is outstanding, not a banner that scrolls out of the notification list.
 - Even when a user *does* end a Live Activity, by default the system keeps it visible on the Lock
@@ -359,7 +359,7 @@ Removes decision paralysis by choosing *for* the user.
 ## 7. Architecture
 
 ```
-ADHDoIt/
+ActuallyDoIt/
 ├─ Models/
 │  ├─ Task.swift               (@Model, CloudKit-compatible)
 │  ├─ RecurrenceRule.swift
@@ -383,9 +383,9 @@ ADHDoIt/
 │  ├─ PickForMeSheet.swift
 │  └─ SettingsView.swift
 └─ App/
-   └─ ADHDoItApp.swift         (ModelContainer + CloudKit config, notification delegate)
+   └─ ActuallyDoItApp.swift         (ModelContainer + CloudKit config, notification delegate)
 
-ADHDoItWidget/                 (Widget Extension target — required for Live Activities)
+ActuallyDoItWidget/                 (Widget Extension target — required for Live Activities)
 ├─ TaskLiveActivity.swift      (ActivityConfiguration: Lock Screen + Dynamic Island views)
 └─ Info.plist                  (NSSupportsLiveActivities = true)
 ```

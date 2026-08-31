@@ -1,7 +1,7 @@
 {
   "configurations" : [
     {
-      "id" : "B2A5F0C1-0000-4000-8000-000000000001",
+      "id" : "DFBA997C-7717-4969-907E-50B6F6AB6B57",
       "name" : "Configuration 1",
       "options" : {
 
@@ -19,8 +19,8 @@
     {
       "target" : {
         "containerPath" : "container:ActuallyDoIt.xcodeproj",
-        "identifier" : "DB7CC2D030207734005C873C",
-        "name" : "ActuallyDoItUITests"
+        "identifier" : "DB7CC2C630207734005C873C",
+        "name" : "ActuallyDoItTests"
       }
     }
   ],

@@ -15,7 +15,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.devinharmse.ActuallyDidIt.tip.small",
+      "productID" : "com.devinharmse.ActuallyDoIt.tip.small",
       "referenceName" : "Small Tip",
       "type" : "Consumable"
     },
@@ -30,7 +30,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.devinharmse.ActuallyDidIt.tip.medium",
+      "productID" : "com.devinharmse.ActuallyDoIt.tip.medium",
       "referenceName" : "Medium Tip",
       "type" : "Consumable"
     },
@@ -45,13 +45,13 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.devinharmse.ActuallyDidIt.tip.large",
+      "productID" : "com.devinharmse.ActuallyDoIt.tip.large",
       "referenceName" : "Large Tip",
       "type" : "Consumable"
     }
   ],
   "settings" : {
-    "_applicationInternalID" : "ActuallyDidIt",
+    "_applicationInternalID" : "ActuallyDoIt",
     "_developerTeamID" : "",
     "_failTransactionsEnabled" : false,
     "_lastSynchronizedDate" : 0,
