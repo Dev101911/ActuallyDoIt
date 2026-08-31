@@ -10,8 +10,13 @@
 
 import Foundation
 import SwiftData
-import ActivityKit
 import os
+
+// Live Activities (ActivityKit) exist only on iOS/iPadOS. On Mac Catalyst the whole
+// ActivityKit-driven implementation is compiled out and the public methods become no-ops,
+// so the callers in `TaskActions` and `ActuallyDoItApp` need no platform awareness.
+#if !targetEnvironment(macCatalyst)
+import ActivityKit
 
 @MainActor
 final class FocusActivityController {
@@ -96,3 +101,18 @@ final class FocusActivityController {
         }
     }
 }
+
+#else
+
+/// Mac Catalyst stub: Live Activities don't exist on macOS, so focus reconciliation is a no-op.
+/// Keeps the same call surface as the iOS implementation so callers stay platform-agnostic.
+@MainActor
+final class FocusActivityController {
+    static let shared = FocusActivityController()
+    private init() {}
+
+    func reconcile(in context: ModelContext) {}
+    func restore(in context: ModelContext) {}
+}
+
+#endif

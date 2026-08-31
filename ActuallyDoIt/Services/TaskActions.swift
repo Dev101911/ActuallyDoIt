@@ -93,6 +93,13 @@ enum TaskActions {
         persistAndReloadWidgets(context)
     }
 
+    /// Persists task edits (a newly created task, or inline edits to an existing one) to the shared
+    /// store and refreshes the widget, so freshly added items appear on the Home Screen right away
+    /// rather than waiting for SwiftData's deferred autosave. Used by the create/edit form.
+    static func persistEdits(in context: ModelContext) {
+        persistAndReloadWidgets(context)
+    }
+
     /// Flushes pending changes to the shared store, then asks WidgetKit to rebuild the Home Screen
     /// widget timelines. The explicit save matters because the widget runs in a *separate process*
     /// and reads the store from disk — without a save it would see stale data, since SwiftData's

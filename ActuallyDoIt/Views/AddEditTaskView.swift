@@ -217,6 +217,7 @@ struct AddEditTaskView: View {
             modelContext.insert(editor.makeTask())
         }
         NudgeScheduler.shared.reconcile(in: modelContext)
+        TaskActions.persistEdits(in: modelContext)
         dismiss()
     }
 }

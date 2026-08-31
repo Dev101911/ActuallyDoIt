@@ -222,6 +222,7 @@ struct NowView: View {
                 TaskDetailView(task: task)
             }
             .fullScreenCover(isPresented: $showingTutorial) { TutorialView() }
+            .monthlyReviewPrompt()
             .task {
                 // Auto-present the tour once, on first launch.
                 if !hasSeenTutorial { showingTutorial = true }

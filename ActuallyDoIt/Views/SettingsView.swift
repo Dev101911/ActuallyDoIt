@@ -9,10 +9,12 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
 
     @AppStorage(AccentTheme.storageKey) private var accentTheme = AccentTheme.default
     @AppStorage(AppearanceTheme.storageKey) private var appearanceTheme = AppearanceTheme.default
+    @AppStorage(ReviewPrompt.hasReviewedKey) private var hasReviewed = false
 
     @State private var showingTutorial = false
 
@@ -64,10 +66,20 @@ struct SettingsView: View {
                     } label: {
                         Label("How it works", systemImage: "questionmark.circle")
                     }
+
+                    Button {
+                        if let url = ReviewPrompt.writeReviewURL {
+                            openURL(url)
+                        }
+                        // Reviewing from here also stops the gentle monthly prompt.
+                        hasReviewed = true
+                    } label: {
+                        Label("Rate ActuallyDoIt", systemImage: "star")
+                    }
                 } header: {
                     Text("Help")
                 } footer: {
-                    Text("Replay the quick tour of the app.")
+                    Text("Replay the quick tour, or leave a review on the App Store.")
                 }
 
                 Section {

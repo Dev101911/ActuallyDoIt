@@ -61,5 +61,6 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
-## App Store screenshot generation (transient build artifacts; final PNGs live in Marketing/final)
+## App Store screenshot generation (transient build artifacts + generated marketing PNGs; regenerate with Scripts/generate_screenshots.sh)
 build/
+Marketing/final/

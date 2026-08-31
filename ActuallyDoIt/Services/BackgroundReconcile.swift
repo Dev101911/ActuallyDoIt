@@ -16,9 +16,15 @@
 //  request for the next early morning.
 //
 
-import BackgroundTasks
 import SwiftData
 import os
+
+// `BGTaskScheduler` (BackgroundTasks) isn't available on Mac Catalyst. The whole scheduling
+// implementation is compiled out there; the public `register`/`schedule` entry points remain as
+// no-ops so the callers in `ActuallyDoItApp` need no platform awareness. The scheduled morning
+// digest notifications remain the reliable day-rollover fallback on macOS.
+#if !targetEnvironment(macCatalyst)
+import BackgroundTasks
 
 enum BackgroundReconcile {
     /// Must match the entry in the app's `BGTaskSchedulerPermittedIdentifiers` (Info.plist).
@@ -86,3 +92,15 @@ enum BackgroundReconcile {
             ?? Date(timeIntervalSinceNow: 24 * 60 * 60)
     }
 }
+
+#else
+
+/// Mac Catalyst stub: `BGTaskScheduler` isn't available on macOS, so the opportunistic
+/// background reconcile is unavailable. Entry points remain as no-ops to keep callers
+/// platform-agnostic.
+enum BackgroundReconcile {
+    static func register(container: ModelContainer) {}
+    static func schedule() {}
+}
+
+#endif

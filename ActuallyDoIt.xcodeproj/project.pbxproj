@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		DB7CC3123020BA43005C873C /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DB7CC3113020BA43005C873C /* WidgetKit.framework */; };
 		DB7CC3143020BA43005C873C /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DB7CC3133020BA43005C873C /* SwiftUI.framework */; };
-		DB7CC3233020BA44005C873C /* FocusActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DB7CC30F3020BA43005C873C /* FocusActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DB7CC3233020BA44005C873C /* FocusActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DB7CC30F3020BA43005C873C /* FocusActivityExtension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		DB923A423021CB6400416506 /* Tips.storekit in Resources */ = {isa = PBXBuildFile; fileRef = DB923A413021CB6400416506 /* Tips.storekit */; };
 		DB96BB4A303A7635000C4B9D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DB96BB49303A7635000C4B9D /* AppIcon.icon */; };
 		DB96BB4B303A7635000C4B9D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DB96BB49303A7635000C4B9D /* AppIcon.icon */; };
@@ -419,6 +419,7 @@
 		};
 		DB7CC3223020BA44005C873C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = DB7CC30E3020BA43005C873C /* FocusActivityExtension */;
 			targetProxy = DB7CC3213020BA44005C873C /* PBXContainerItemProxy */;
 		};
@@ -574,7 +575,7 @@
 				PRODUCT_NAME = "$(APP_BUNDLE_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -582,7 +583,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -612,7 +613,7 @@
 				PRODUCT_NAME = "$(APP_BUNDLE_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -620,7 +621,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -685,14 +686,14 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = "$(APP_BUNDLE_NAME)";
 			};
 			name = Debug;
@@ -708,14 +709,14 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = "$(APP_BUNDLE_NAME)";
 			};
 			name = Release;

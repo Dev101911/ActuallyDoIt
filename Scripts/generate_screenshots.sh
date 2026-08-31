@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 #
-# Generates the App Store marketing screenshots (iPhone 6.9", 1320×2868).
+# Generates the App Store marketing screenshots for one or more device families.
 #
-# It boots an iPhone 17 Pro Max simulator, pins a clean 9:41 status bar, runs the screenshot UI
-# test (which drives the app in --screenshots mode, grabs each screen, and composes a framed,
-# captioned marketing image per screen), then exports those images to Marketing/final/.
+# For each requested device it runs the screenshot UI test (which drives the app in --screenshots
+# mode, grabs each screen, and composes a framed, captioned marketing image per screen at that
+# device's exact App Store Connect size), then exports the images to Marketing/final/<device>/.
 #
-# Usage:  Scripts/generate_screenshots.sh
+#   iphone  iPhone 6.9"  1320×2868   (iPhone 17 Pro Max simulator)
+#   ipad    iPad 13"     2064×2752   (iPad Pro 13-inch simulator)
+#   mac     Mac          2880×1800   (Mac Catalyst, runs on this Mac)
+#
+# Usage:  Scripts/generate_screenshots.sh [iphone|ipad|mac|all]   (default: iphone)
 #
 set -euo pipefail
 
@@ -17,65 +21,26 @@ cd "$REPO_ROOT"
 
 PROJECT="ActuallyDoIt.xcodeproj"
 SCHEME="ActuallyDoIt"
-DEVICE_NAME="iPhone 17 Pro Max"
-RESULT_BUNDLE="$REPO_ROOT/build/Screenshots.xcresult"
-OUTPUT_DIR="$REPO_ROOT/Marketing/final"
 
-echo "==> Locating '$DEVICE_NAME' simulator"
-UDID="$(xcrun simctl list devices available | grep -m1 "$DEVICE_NAME (" | grep -oE '[0-9A-F-]{36}')"
-if [[ -z "${UDID:-}" ]]; then
-    echo "error: no available '$DEVICE_NAME' simulator found." >&2
-    echo "Create one in Xcode > Settings > Components, or via 'xcrun simctl create'." >&2
-    exit 1
-fi
-echo "    $UDID"
+TARGET="${1:-iphone}"
+case "$TARGET" in
+    iphone|ipad|mac|all) ;;
+    *) echo "usage: $0 [iphone|ipad|mac|all]" >&2; exit 2 ;;
+esac
 
-echo "==> Booting simulator"
-xcrun simctl boot "$UDID" 2>/dev/null || true
-xcrun simctl bootstatus "$UDID" -b
+# Exports every .keepAlways attachment from an xcresult bundle to $1, then renames the generated
+# files back to the clean suggested names (e.g. "01-focus.png") via the manifest xcresulttool writes.
+export_and_rename() {
+    local result_bundle="$1" output_dir="$2"
+    echo "==> Exporting framed screenshots to $output_dir"
+    rm -rf "$output_dir"
+    mkdir -p "$output_dir"
+    xcrun xcresulttool export attachments \
+        --path "$result_bundle" \
+        --output-path "$output_dir"
 
-echo "==> Overriding status bar (9:41, full signal/battery)"
-xcrun simctl status_bar "$UDID" override \
-    --time "9:41" \
-    --batteryState charged \
-    --batteryLevel 100 \
-    --cellularMode active \
-    --cellularBars 4 \
-    --dataNetwork wifi \
-    --wifiMode active \
-    --wifiBars 3
-
-echo "==> Running screenshot UI test"
-rm -rf "$RESULT_BUNDLE"
-BUILD_LOG="$REPO_ROOT/build/screenshots-xcodebuild.log"
-mkdir -p "$REPO_ROOT/build"
-set +e
-xcodebuild test \
-    -project "$PROJECT" \
-    -scheme "$SCHEME" \
-    -testPlan Screenshots \
-    -destination "id=$UDID" \
-    -only-testing:ActuallyDoItUITests/ScreenshotTests \
-    -resultBundlePath "$RESULT_BUNDLE" \
-    > "$BUILD_LOG" 2>&1
-TEST_STATUS=$?
-set -e
-if [[ $TEST_STATUS -ne 0 ]]; then
-    echo "    xcodebuild test exited $TEST_STATUS — tail of $BUILD_LOG:" >&2
-    tail -30 "$BUILD_LOG" >&2
-fi
-
-echo "==> Exporting framed screenshots to $OUTPUT_DIR"
-rm -rf "$OUTPUT_DIR"
-mkdir -p "$OUTPUT_DIR"
-xcrun xcresulttool export attachments \
-    --path "$RESULT_BUNDLE" \
-    --output-path "$OUTPUT_DIR"
-
-# xcresulttool writes files under generated names plus a manifest mapping them to the
-# suggestedName (e.g. "01-focus.png") we set on each attachment. Rename to the friendly names.
-echo "==> Renaming via manifest"
-/usr/bin/python3 - "$OUTPUT_DIR" <<'PY'
+    echo "==> Renaming via manifest"
+    /usr/bin/python3 - "$output_dir" <<'PY'
 import json, os, re, sys, shutil
 out = sys.argv[1]
 manifest_path = os.path.join(out, "manifest.json")
@@ -107,10 +72,82 @@ for entry in manifest:
 
 os.remove(manifest_path)
 PY
+}
 
-echo "==> Restoring status bar"
-xcrun simctl status_bar "$UDID" clear || true
+# Runs the screenshot test against a given -destination and exports its output.
+#   run_screenshots <label> <output_subdir> <destination-arg...>
+run_screenshots() {
+    local label="$1" subdir="$2"; shift 2
+    local result_bundle="$REPO_ROOT/build/Screenshots-$label.xcresult"
+    local build_log="$REPO_ROOT/build/screenshots-$label.log"
+    local output_dir="$REPO_ROOT/Marketing/final/$subdir"
 
-echo ""
-echo "Done. Screenshots in: $OUTPUT_DIR"
-ls -1 "$OUTPUT_DIR"/*.png 2>/dev/null || true
+    echo "==> Running screenshot UI test ($label)"
+    rm -rf "$result_bundle"
+    mkdir -p "$REPO_ROOT/build"
+    set +e
+    xcodebuild test \
+        -project "$PROJECT" \
+        -scheme "$SCHEME" \
+        -testPlan Screenshots \
+        "$@" \
+        -only-testing:ActuallyDoItUITests/ScreenshotTests \
+        -resultBundlePath "$result_bundle" \
+        > "$build_log" 2>&1
+    local status=$?
+    set -e
+    if [[ $status -ne 0 ]]; then
+        echo "    xcodebuild test exited $status — tail of $build_log:" >&2
+        tail -30 "$build_log" >&2
+    fi
+
+    export_and_rename "$result_bundle" "$output_dir"
+    echo "    -> $output_dir"
+    ls -1 "$output_dir"/*.png 2>/dev/null || true
+    echo ""
+}
+
+# Boots a simulator by device name, pins a clean 9:41 status bar, runs the test, then restores it.
+run_simulator() {
+    local device_name="$1" subdir="$2"
+    echo "==> Locating '$device_name' simulator"
+    local udid
+    udid="$(xcrun simctl list devices available | grep -m1 "$device_name (" | grep -oE '[0-9A-F-]{36}')"
+    if [[ -z "${udid:-}" ]]; then
+        echo "error: no available '$device_name' simulator found." >&2
+        echo "Create one in Xcode > Settings > Components, or via 'xcrun simctl create'." >&2
+        exit 1
+    fi
+    echo "    $udid"
+
+    echo "==> Booting simulator"
+    xcrun simctl boot "$udid" 2>/dev/null || true
+    xcrun simctl bootstatus "$udid" -b
+
+    echo "==> Overriding status bar (9:41, full signal/battery)"
+    xcrun simctl status_bar "$udid" override \
+        --time "9:41" \
+        --batteryState charged \
+        --batteryLevel 100 \
+        --cellularMode active \
+        --cellularBars 4 \
+        --dataNetwork wifi \
+        --wifiMode active \
+        --wifiBars 3
+
+    run_screenshots "$subdir" "$subdir" -destination "id=$udid"
+
+    echo "==> Restoring status bar"
+    xcrun simctl status_bar "$udid" clear || true
+}
+
+# Runs the test as a Mac Catalyst app on this Mac (no simulator / status bar).
+run_mac() {
+    run_screenshots "mac" "mac" -destination "platform=macOS,variant=Mac Catalyst"
+}
+
+[[ "$TARGET" == "iphone" || "$TARGET" == "all" ]] && run_simulator "iPhone 17 Pro Max" "iphone"
+[[ "$TARGET" == "ipad"   || "$TARGET" == "all" ]] && run_simulator "iPad Pro 13-inch (M5)" "ipad"
+[[ "$TARGET" == "mac"    || "$TARGET" == "all" ]] && run_mac
+
+echo "Done. Screenshots in: $REPO_ROOT/Marketing/final/"

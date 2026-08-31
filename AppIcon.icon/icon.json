@@ -16,31 +16,6 @@
     {
       "layers" : [
         {
-          "blend-mode" : "normal",
-          "fill-specializations" : [
-            {
-              "value" : {
-                "solid" : "extended-gray:1.00000,1.00000"
-              }
-            },
-            {
-              "appearance" : "dark",
-              "value" : {
-                "solid" : "extended-gray:1.00000,1.00000"
-              }
-            },
-            {
-              "appearance" : "tinted",
-              "value" : {
-                "solid" : "extended-gray:1.00000,1.00000"
-              }
-            }
-          ],
-          "glass" : true,
-          "image-name" : "2-rings.png",
-          "name" : "2-rings"
-        },
-        {
           "fill-specializations" : [
             {
               "value" : {
@@ -56,7 +31,14 @@
           ],
           "hidden" : false,
           "image-name" : "3-checkbox.png",
-          "name" : "3-checkbox"
+          "name" : "3-checkbox",
+          "position" : {
+            "scale" : 1.8,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
         },
         {
           "fill-specializations" : [
@@ -76,7 +58,7 @@
           "image-name" : "4-checkmark.png",
           "name" : "4-checkmark",
           "position" : {
-            "scale" : 1,
+            "scale" : 1.8,
             "translation-in-points" : [
               -2,
               8.5

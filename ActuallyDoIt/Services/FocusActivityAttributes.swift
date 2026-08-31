@@ -11,6 +11,11 @@
 //
 
 import Foundation
+
+// ActivityKit (Live Activities) is unavailable on Mac Catalyst, so this whole type — used only by
+// the iOS app and the iOS widget extension — is compiled out there. On Catalyst the Live Activity
+// controller is a no-op stub and never references this type.
+#if !targetEnvironment(macCatalyst)
 import ActivityKit
 
 struct FocusActivityAttributes: ActivityAttributes {
@@ -31,3 +36,5 @@ struct FocusActivityAttributes: ActivityAttributes {
     /// running activity already represents the current task or needs replacing.
     var taskID: String
 }
+
+#endif
