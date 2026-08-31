@@ -73,7 +73,7 @@ final class ScreenshotTests: XCTestCase {
         // 01 — Doing-now hero (top of the Now screen).
         XCTAssertTrue(app.staticTexts["Doing now"].waitForExistence(timeout: 15))
         settle()
-        attach(framedAppShot(caption: "Beat overwhelm —\none thing at a time"), "01-focus.png")
+        attach(framedAppShot(caption: "Not overwhelming —\none thing at a time"), "01-focus.png")
 
         // 04 — the day's board: release the current focus so the "Doing now" hero gives way to a
         // clean Today section (with its progress ring) and the suggested next tasks.
@@ -99,7 +99,7 @@ final class ScreenshotTests: XCTestCase {
 
         // 03 — the nudge payoff: a composed lock screen using the app's real reminder copy. No app
         // grab is needed; the whole "screen" is rendered in SwiftUI.
-        attach(renderMarketing(caption: "It nudges until\nyou actually did it") {
+        attach(renderMarketing(caption: "It nudges until\nyou actually do it") {
             PhoneScreen { LockScreenMock() }
         }, "03-lockscreen.png")
     }
