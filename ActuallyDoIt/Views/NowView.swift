@@ -50,9 +50,15 @@ struct NowView: View {
         TaskPrioritizer.dueToday(from: filteredTasks)
     }
 
-    /// Forward-looking preview, excluding anything already shown under "Today".
+    /// Actionable tasks due tomorrow — a heads-up group shown between "Today" and "Suggested next".
+    private var tomorrow: [TaskItem] {
+        TaskPrioritizer.dueTomorrow(from: filteredTasks)
+    }
+
+    /// Forward-looking preview, excluding anything already shown under "Today" or "Tomorrow".
     private var upNext: [TaskItem] {
-        TaskPrioritizer.upNext(from: filteredTasks, excludingIDs: Set(dueToday.map(\.id)), limit: 3)
+        let shownIDs = Set(dueToday.map(\.id)).union(tomorrow.map(\.id))
+        return TaskPrioritizer.upNext(from: filteredTasks, excludingIDs: shownIDs, limit: 3)
             .sorted(by: TaskItem.byOverdueThenDueDate)
     }
 
@@ -89,8 +95,8 @@ struct NowView: View {
     }
 
     private var isEmpty: Bool {
-        currentTask == nil && dueToday.isEmpty && upNext.isEmpty && todayScheduled.isEmpty
-            && completedToday.isEmpty
+        currentTask == nil && dueToday.isEmpty && tomorrow.isEmpty && upNext.isEmpty
+            && todayScheduled.isEmpty && completedToday.isEmpty
     }
 
     /// True when the board is empty only because the active filter hid everything — there are tasks,
@@ -149,6 +155,16 @@ struct NowView: View {
                                         DayProgressBadge(done: todayDoneCount, total: todayScheduled.count)
                                     }
                                 }
+                            }
+                        }
+
+                        if !tomorrow.isEmpty {
+                            Section {
+                                ForEach(tomorrow) { task in
+                                    TaskListRow(task: task)
+                                }
+                            } header: {
+                                Text("Tomorrow")
                             }
                         }
 

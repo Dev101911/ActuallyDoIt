@@ -22,8 +22,22 @@ enum TaskPrioritizer {
             .sorted(by: TaskItem.byOverdueThenDueDate)
     }
 
+    /// The actionable tasks due tomorrow — the "Tomorrow" heads-up group. Excludes the current
+    /// task. Includes chores whose next occurrence falls tomorrow. Sorted soonest-due first.
+    static func dueTomorrow(from tasks: [TaskItem], now: Date = Date()) -> [TaskItem] {
+        let calendar = Calendar.current
+        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) else { return [] }
+        return tasks
+            .filter { task in
+                guard task.isActionable, !task.isCurrent, let due = task.dueDate else { return false }
+                return calendar.isDate(due, inSameDayAs: tomorrow)
+            }
+            .sorted(by: TaskItem.byOverdueThenDueDate)
+    }
+
     /// The top actionable tasks to preview, ranked by urgency. Excludes the current task and any
-    /// tasks in `excludingIDs` (used to keep "Up next" from repeating what's already under "Today").
+    /// tasks in `excludingIDs` (used to keep "Up next" from repeating what's already under "Today"
+    /// or "Tomorrow").
     static func upNext(from tasks: [TaskItem], excludingIDs: Set<UUID> = [], limit: Int = 3) -> [TaskItem] {
         tasks
             .filter { task in

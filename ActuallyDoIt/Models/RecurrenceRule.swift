@@ -87,27 +87,55 @@ struct RecurrenceRule: Codable, Hashable {
     /// The first due date for a freshly created chore, anchored to the start of a day so reminders
     /// land on whole days. When specific weekdays are chosen, that's the start day if it's one of
     /// them, otherwise the next matching weekday. A `startDate` in the future pushes the first
-    /// occurrence out to that day; one in the past is ignored so the schedule never begins earlier
-    /// than the reference (normally today).
+    /// occurrence out to that day; one in the past still anchors the schedule's phase, so the first
+    /// due date is the first occurrence on or after the reference that lands on the chosen cadence
+    /// (e.g. an every-2-weeks chore started last Wednesday next falls due a fortnight later, not
+    /// today).
     func firstDueDate(from reference: Date = Date(), calendar: Calendar = .current) -> Date {
-        let effectiveReference = max(reference, startDate ?? reference)
-        let startOfDay = calendar.startOfDay(for: effectiveReference)
+        let referenceDay = calendar.startOfDay(for: reference)
+        // The day the schedule is pinned to; without an explicit start we anchor to the reference.
+        let anchor = startDate.map { calendar.startOfDay(for: $0) } ?? referenceDay
+
+        // The first candidate occurrence, honouring any chosen weekdays.
+        var occurrence: Date
         if supportsWeekdays, let weekdays, !weekdays.isEmpty {
-            if weekdays.contains(calendar.component(.weekday, from: startOfDay)) {
-                return startOfDay
+            if weekdays.contains(calendar.component(.weekday, from: anchor)) {
+                occurrence = anchor
+            } else {
+                occurrence = nextWeekdayOccurrence(after: anchor, weekdays: Set(weekdays), calendar: calendar) ?? anchor
             }
-            return nextWeekdayOccurrence(after: startOfDay, weekdays: Set(weekdays), calendar: calendar) ?? startOfDay
+        } else {
+            occurrence = anchor
         }
-        return startOfDay
+
+        // Step forward along the cadence until we reach the first occurrence on or after the
+        // reference, so a start day in the past fixes the schedule's phase rather than its date.
+        while occurrence < referenceDay {
+            guard let next = nextDate(after: occurrence, calendar: calendar) else { break }
+            occurrence = next
+        }
+        return occurrence
     }
 
-    /// The next day strictly after `date` whose weekday is in `weekdays`.
+    /// The next day strictly after `date` whose weekday is in `weekdays`, respecting `interval`.
+    ///
+    /// For a weekly interval greater than one the schedule only fires in weeks that are a whole
+    /// number of intervals from the anchor week (the rule's `startDate`, falling back to `date`),
+    /// so "every 2 weeks on Wed" skips the off weeks instead of firing every Wednesday.
     private func nextWeekdayOccurrence(after date: Date, weekdays: Set<Int>, calendar: Calendar) -> Date? {
-        for offset in 1...7 {
+        let anchorWeekStart = calendar.dateInterval(of: .weekOfYear, for: startDate ?? date)?.start
+        // Scan far enough to clear a full skipped span plus one active week.
+        let horizon = interval * 7 + 7
+        for offset in 1...horizon {
             guard let candidate = calendar.date(byAdding: .day, value: offset, to: date) else { continue }
-            if weekdays.contains(calendar.component(.weekday, from: candidate)) {
-                return candidate
+            guard weekdays.contains(calendar.component(.weekday, from: candidate)) else { continue }
+            // With a multi-week interval, only accept candidates that land in an on-phase week.
+            if interval > 1, let anchorWeekStart,
+               let candidateWeekStart = calendar.dateInterval(of: .weekOfYear, for: candidate)?.start {
+                let weeks = calendar.dateComponents([.weekOfYear], from: anchorWeekStart, to: candidateWeekStart).weekOfYear ?? 0
+                if weeks % interval != 0 { continue }
             }
+            return candidate
         }
         return nil
     }
