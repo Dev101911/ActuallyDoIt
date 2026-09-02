@@ -39,13 +39,17 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         guard let raw = userInfo[Self.taskIDKey] as? String,
               let id = UUID(uuidString: raw) else { return }
-        // Hand the id to the UI on a fresh main-actor turn rather than `await`-ing the mutation
-        // inline. Awaiting here runs the state change as part of the notification-response
-        // continuation, which on a cold launch UIKit drains inside its post-CATransaction commit /
-        // state-restoration snapshot pass (`_updateStateRestorationArchive…` →
-        // `_performBlockAfterCATransactionCommit…`). Presenting the routed task's sheet from within
-        // that commit crashes. Scheduling a detached task lets the delegate return immediately and
-        // defers the mutation — and the sheet presentation it drives — to a clean runloop turn.
-        Task { @MainActor in self.selectedTaskID = id }
+        // Hand the id to the UI on a *later* runloop turn rather than mutating it inline. Doing it
+        // inline — or via `Task { @MainActor in … }`, whose continuation the main-actor executor can
+        // still drain within the same callout — runs the state change as part of the
+        // notification-response handling, which on a cold launch UIKit performs inside its
+        // post-CATransaction commit / state-restoration snapshot pass (`_updateStateRestorationArchive…`
+        // → `_performBlockAfterCATransactionCommitSynchronizes…`). Mutating `selectedTaskID` there
+        // drives the routed task's sheet from within that commit and trips an NSInternalInconsistency
+        // assertion. `DispatchQueue.main.async` is dequeued on a subsequent runloop pass, after the
+        // commit finishes, so the mutation — and the sheet presentation it drives — lands on a clean turn.
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated { self.selectedTaskID = id }
+        }
     }
 }
