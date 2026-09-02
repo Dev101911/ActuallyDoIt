@@ -17,6 +17,21 @@
 import Foundation
 import SwiftData
 
+/// The custom-scheme deep links shared between the widget (which builds them) and the app (which
+/// parses them in `onOpenURL`). Kept here because `SharedStore` is already a member of both targets.
+enum WidgetDeepLink {
+    static let scheme = "actuallydidit"
+
+    /// The URL host that marks a link to a specific task: `actuallydidit://task/<uuid>`.
+    static let taskHost = "task"
+
+    /// Opens the app to the Now screen with no specific task selected.
+    static var now: URL { URL(string: "\(scheme)://now")! }
+
+    /// Opens the app and presents the given task's detail.
+    static func task(_ id: String) -> URL { URL(string: "\(scheme)://\(taskHost)/\(id)")! }
+}
+
 enum SharedStore {
     /// The App Group both targets share. Must match the `com.apple.security.application-groups`
     /// entry in each target's entitlements.

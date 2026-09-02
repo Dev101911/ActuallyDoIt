@@ -104,7 +104,16 @@ struct TasksWidgetEntryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .containerBackground(.fill.tertiary, for: .widget)
-        .widgetURL(URL(string: "actuallydidit://now"))
+        .widgetURL(primaryURL)
+    }
+
+    /// The tap target for the widget as a whole. Small widgets support only this single link (no
+    /// per-row `Link`), so it points at the most relevant task — the current focus, else the first
+    /// up-next — falling back to the Now screen when there's nothing to open.
+    private var primaryURL: URL {
+        if let current = entry.current { return WidgetDeepLink.task(current.id) }
+        if let first = entry.upNext.first { return WidgetDeepLink.task(first.id) }
+        return WidgetDeepLink.now
     }
 }
 
@@ -178,10 +187,17 @@ private struct CurrentTaskBlock: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ReasonLabel(text: current.reason)
-            Text(current.title)
-                .font(.headline)
-                .lineLimit(3)
+            // Tapping the reason/title opens this task; the Complete button stays its own control.
+            // (On small widgets `Link` is ignored and the whole widget uses `widgetURL` instead.)
+            Link(destination: WidgetDeepLink.task(current.id)) {
+                VStack(alignment: .leading, spacing: 6) {
+                    ReasonLabel(text: current.reason)
+                    Text(current.title)
+                        .font(.headline)
+                        .lineLimit(3)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if let start = current.focusStartedAt {
                 Text(start, style: .timer)
                     .font(.subheadline)
@@ -226,14 +242,17 @@ private struct UpNextList: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(tasks.prefix(limit)) { task in
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(task.title)
-                            .font(.subheadline.weight(.medium))
-                            .lineLimit(1)
-                        Text("\(task.reason) · \(task.estimatedMinutes) min")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                    Link(destination: WidgetDeepLink.task(task.id)) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(task.title)
+                                .font(.subheadline.weight(.medium))
+                                .lineLimit(1)
+                            Text("\(task.reason) · \(task.estimatedMinutes) min")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }

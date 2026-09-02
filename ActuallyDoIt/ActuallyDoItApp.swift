@@ -196,6 +196,14 @@ struct ActuallyDoItApp: App {
                     // from the foreground without ever entering the background.
                     BackgroundReconcile.schedule()
                 }
+                .onOpenURL { url in
+                    // Widget task links (actuallydidit://task/<uuid>) route through the same
+                    // NotificationRouter the Now screen already observes, so presentation reuses its
+                    // launch-timing-safe path. Other links (e.g. .../now) just bring the app forward.
+                    guard url.scheme == WidgetDeepLink.scheme, url.host == WidgetDeepLink.taskHost,
+                          let id = UUID(uuidString: url.lastPathComponent) else { return }
+                    notificationRouter.selectedTaskID = id
+                }
                 .environment(notificationRouter)
                 .tint(accentTheme.color)
                 .background(AppearanceStyleSetter(style: appearanceTheme.uiStyle))

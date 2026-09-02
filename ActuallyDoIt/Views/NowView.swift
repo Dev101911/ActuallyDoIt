@@ -12,6 +12,7 @@ import SwiftData
 
 struct NowView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(NotificationRouter.self) private var notificationRouter
 
     @Query private var allTasks: [TaskItem]
@@ -227,11 +228,17 @@ struct NowView: View {
                 // Auto-present the tour once, on first launch.
                 if !hasSeenTutorial { showingTutorial = true }
             }
-            // Open the tapped task's detail. Handle both an id set before the view appeared (a
-            // notification that cold-launched the app) and later taps while it's on screen.
-            .task { openRoutedTask(notificationRouter.selectedTaskID) }
-            .onChange(of: notificationRouter.selectedTaskID) { _, id in
-                openRoutedTask(id)
+            // Open the tapped task's detail. A notification can set the routed id before this view is
+            // on screen (a tap that cold-launched the app) or while it's already visible. In every
+            // case we defer the actual sheet presentation until the scene is fully `.active`:
+            // presenting a sheet while UIKit is still finishing its launch-time transition trips an
+            // NSInternalInconsistency assertion and crashes the app right after it opens.
+            .task { openRoutedTaskIfActive() }
+            .onChange(of: notificationRouter.selectedTaskID) { _, _ in
+                openRoutedTaskIfActive()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { openRoutedTaskIfActive() }
             }
         }
     }
@@ -270,11 +277,16 @@ struct NowView: View {
         }
     }
 
-    /// Presents the detail view for the task matching `id`, then clears the router so the same task
-    /// can be reopened by a later tap. Does nothing if the task no longer exists (e.g. completed or
-    /// deleted since the notification fired).
-    private func openRoutedTask(_ id: UUID?) {
-        guard let id, let task = allTasks.first(where: { $0.id == id }) else { return }
+    /// Presents the detail view for the pending routed task — but only once the scene is `.active`,
+    /// so the sheet is never presented during the launch-time transition (which crashes with an
+    /// NSInternalInconsistency assertion). Clears the router afterwards so the same task can be
+    /// reopened by a later tap. Does nothing if the scene isn't active yet (a later `scenePhase`
+    /// change retries), or if the task no longer exists (e.g. completed or deleted since the
+    /// notification fired).
+    private func openRoutedTaskIfActive() {
+        guard scenePhase == .active,
+              let id = notificationRouter.selectedTaskID,
+              let task = allTasks.first(where: { $0.id == id }) else { return }
         routedTask = task
         notificationRouter.selectedTaskID = nil
     }
