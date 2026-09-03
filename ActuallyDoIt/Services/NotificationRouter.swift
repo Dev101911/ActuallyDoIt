@@ -19,7 +19,7 @@ import UserNotifications
 @MainActor
 final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
     /// The `userInfo` key under which each task-specific nudge carries its task id.
-    static let taskIDKey = "taskID"
+    nonisolated static let taskIDKey = "taskID"
 
     /// The task the user asked to open by tapping its notification. The UI clears this back to `nil`
     /// once it has presented the task, so repeated taps of the same task re-trigger presentation.
@@ -34,22 +34,29 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
 
     /// Called when the user taps (or otherwise responds to) a delivered notification. Summary and
     /// digest notifications carry no task id, so those simply open the app to the Now screen.
+    ///
+    /// We deliberately implement the **completion-handler** variant rather than the `async` one. The
+    /// `async` variant is `nonisolated`, so Swift runs *and completes* it on the generic cooperative
+    /// executor — off the main thread. The instant the response is reported handled, UIKit runs a
+    /// state-restoration snapshot pass (`_updateSnapshotAndStateRestoration…` →
+    /// `_performBlockAfterCATransactionCommitSynchronizes…`) on whatever thread completed the task.
+    /// That pass is main-thread-only; running it off the cooperative pool trips an
+    /// NSInternalInconsistency assertion and aborts the app on a cold-launch notification tap.
+    ///
+    /// So we do *everything* — reading the id, mutating `selectedTaskID`, and calling the completion
+    /// handler that lets UIKit start its snapshot — on a later main-thread runloop turn. `DispatchQueue`
+    /// `.main.async` both moves that work onto the main thread and defers it past the launch-time
+    /// CATransaction commit, so UIKit's snapshot pass runs on the main thread on a clean turn.
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            didReceive response: UNNotificationResponse) async {
+                                            didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping @Sendable () -> Void) {
         let userInfo = response.notification.request.content.userInfo
-        guard let raw = userInfo[Self.taskIDKey] as? String,
-              let id = UUID(uuidString: raw) else { return }
-        // Hand the id to the UI on a *later* runloop turn rather than mutating it inline. Doing it
-        // inline — or via `Task { @MainActor in … }`, whose continuation the main-actor executor can
-        // still drain within the same callout — runs the state change as part of the
-        // notification-response handling, which on a cold launch UIKit performs inside its
-        // post-CATransaction commit / state-restoration snapshot pass (`_updateStateRestorationArchive…`
-        // → `_performBlockAfterCATransactionCommitSynchronizes…`). Mutating `selectedTaskID` there
-        // drives the routed task's sheet from within that commit and trips an NSInternalInconsistency
-        // assertion. `DispatchQueue.main.async` is dequeued on a subsequent runloop pass, after the
-        // commit finishes, so the mutation — and the sheet presentation it drives — lands on a clean turn.
+        let taskID = (userInfo[Self.taskIDKey] as? String).flatMap(UUID.init(uuidString:))
         DispatchQueue.main.async {
-            MainActor.assumeIsolated { self.selectedTaskID = id }
+            if let taskID {
+                MainActor.assumeIsolated { self.selectedTaskID = taskID }
+            }
+            completionHandler()
         }
     }
 }

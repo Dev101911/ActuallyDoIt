@@ -303,8 +303,19 @@ struct NowView: View {
         guard scenePhase == .active,
               let id = notificationRouter.selectedTaskID,
               let task = allTasks.first(where: { $0.id == id }) else { return }
-        routedTask = task
+        // Consume the routed id immediately so this tap is handled exactly once — even though the
+        // presentation itself is deferred below, and even if another trigger (onChange/scenePhase)
+        // fires before that deferred turn runs.
         notificationRouter.selectedTaskID = nil
+        // Defer the sheet-driving mutation to a later runloop turn. `scenePhase == .active` is
+        // necessary but not sufficient on a cold launch: UIKit can still be finishing its
+        // launch-time CATransaction commit when the scene first reports active, and presenting a
+        // sheet inside that commit trips an NSInternalInconsistency assertion. Hopping through
+        // `DispatchQueue.main.async` lands the mutation on a clean turn after the commit settles —
+        // the same launch-timing-safe technique `NotificationRouter` uses on the delegate side.
+        DispatchQueue.main.async {
+            self.routedTask = task
+        }
     }
 }
 
